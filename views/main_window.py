@@ -72,10 +72,13 @@ class ToolTip:
 
 
 class CTkCalendarPopup(ctk.CTkToplevel):
-    def __init__(self, master, current_date, callback):
+    def __init__(self, master, current_date, callback, x=None, y=None):
         super().__init__(master)
         self.title("Seleccionar Fecha")
-        self.geometry("300x320")
+        if x is not None and y is not None:
+            self.geometry(f"300x320+{x}+{y}")
+        else:
+            self.geometry("300x320")
         self.resizable(False, False)
         self.transient(master)  # Vínculo a ventana principal
         self.grab_set()         # Bloquear interacción con ventana principal
@@ -177,60 +180,22 @@ class CTkCalendarPopup(ctk.CTkToplevel):
         self.destroy()
 
 
-class HoverMenu:
+class ClickMenu:
     def __init__(self, widget, options_dict, command_callback):
         self.widget = widget
         self.options_dict = options_dict
         self.command_callback = command_callback
-        self.timer_id = None
         self.menu = None
         
-        # Vincular eventos al widget principal y a sus componentes hijos (ej: el canvas del CTkButton)
-        self.widget.bind("<Enter>", self.on_enter)
-        self.widget.bind("<Leave>", self.on_leave)
-        try:
-            for child in self.widget.winfo_children():
-                child.bind("<Enter>", self.on_enter)
-                child.bind("<Leave>", self.on_leave)
-        except Exception:
-            pass
-        
-    def on_enter(self, event=None):
-        if self.timer_id:
-            return
-        # Iniciar temporizador de 300ms
-        self.timer_id = self.widget.after(300, self.show_menu)
-        
-    def on_leave(self, event=None):
-        try:
-            # Obtener coordenadas del puntero y del widget en pantalla
-            x, y = self.widget.winfo_pointerxy()
-            wx = self.widget.winfo_rootx()
-            wy = self.widget.winfo_rooty()
-            ww = self.widget.winfo_width()
-            wh = self.widget.winfo_height()
-            
-            # Solo cancelar si el mouse realmente salió de los límites físicos del botón
-            if not (wx <= x <= wx + ww and wy <= y <= wy + wh):
-                if self.timer_id:
-                    self.widget.after_cancel(self.timer_id)
-                    self.timer_id = None
-        except Exception:
-            if self.timer_id:
-                self.widget.after_cancel(self.timer_id)
-                self.timer_id = None
+        self.widget.configure(command=self.show_menu)
         
     def show_menu(self):
-        self.timer_id = None
-        
-        # Cerrar menú anterior si existiera
         if self.menu:
             try:
                 self.menu.destroy()
             except Exception:
                 pass
                 
-        # Crear menú con apariencia oscura
         self.menu = tk.Menu(
             self.widget,
             tearoff=0,
@@ -250,7 +215,6 @@ class HoverMenu:
                 command=make_command(label)
             )
             
-        # Posicionar el menú abajo del botón
         x = self.widget.winfo_rootx()
         y = self.widget.winfo_rooty() + self.widget.winfo_height()
         
@@ -371,9 +335,9 @@ class MainWindow(Tk):
         self.minsize(1050, 600)
 
         # Configurar grid (3 columnas: Izquierda - Formulario/Clasificación, Centro - Previsualización, Derecha - Lista de Archivos)
-        self.grid_columnconfigure(0, weight=3)
-        self.grid_columnconfigure(1, weight=5)
-        self.grid_columnconfigure(2, weight=3)
+        self.grid_columnconfigure(0, weight=3, uniform="columnas")
+        self.grid_columnconfigure(1, weight=4, uniform="columnas")
+        self.grid_columnconfigure(2, weight=3, uniform="columnas")
         self.grid_rowconfigure(0, weight=1)
 
         self._crear_panel_izquierdo()
@@ -403,18 +367,27 @@ class MainWindow(Tk):
         self.btn_fecha.grid(row=3, column=0, padx=10, pady=(0, 15), sticky="w")
 
         # Archivo activo seleccionado
-        self.lbl_archivo_activo = ctk.CTkLabel(
-            self.panel_izquierdo, 
-            text="Ningún archivo seleccionado", 
-            text_color="gray", 
-            font=("Arial", 12),
-            wraplength=280,
-            justify="left"
+        self.frame_seleccionado = ctk.CTkFrame(self.panel_izquierdo, fg_color="transparent")
+        self.frame_seleccionado.grid(row=4, column=0, padx=10, pady=(0, 10), sticky="w")
+        
+        self.lbl_seleccionado_titulo = ctk.CTkLabel(
+            self.frame_seleccionado, 
+            text="Seleccionado:", 
+            text_color="black",
+            font=("Arial", 14, "bold")
         )
-        self.lbl_archivo_activo.grid(row=4, column=0, padx=10, pady=(0, 10), sticky="w")
+        self.lbl_seleccionado_titulo.pack(side="left", padx=(0, 5))
+        
+        self.lbl_archivo_activo = ctk.CTkLabel(
+            self.frame_seleccionado, 
+            text="Ninguno", 
+            text_color="gray",
+            font=("Arial", 18, "bold")
+        )
+        self.lbl_archivo_activo.pack(side="left")
 
         # Clasificaciones (ScrollableFrame para alojar los botones)
-        ctk.CTkLabel(self.panel_izquierdo, text="Clasificar como:", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=10, pady=(10, 5), sticky="w")
+        ctk.CTkLabel(self.panel_izquierdo, text="Renombrar:", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=10, pady=(10, 5), sticky="w")
         
         self.scroll_frame = ctk.CTkScrollableFrame(self.panel_izquierdo)
         self.scroll_frame.grid(row=6, column=0, padx=10, pady=5, sticky="nsew")
@@ -439,7 +412,9 @@ class MainWindow(Tk):
             self.botones_clasificacion.append(btn)
 
     def abrir_calendario(self):
-        CTkCalendarPopup(self, self.fecha_ejecucion, self.actualizar_fecha)
+        x = self.btn_fecha.winfo_rootx()
+        y = self.btn_fecha.winfo_rooty() + self.btn_fecha.winfo_height() + 5
+        CTkCalendarPopup(self, self.fecha_ejecucion, self.actualizar_fecha, x=x, y=y)
 
     def actualizar_fecha(self, nueva_fecha):
         self.fecha_ejecucion = nueva_fecha
@@ -451,14 +426,12 @@ class MainWindow(Tk):
     def _crear_panel_preview(self):
         self.panel_preview = ctk.CTkFrame(self)
         self.panel_preview.grid(row=0, column=1, padx=10, pady=20, sticky="nsew")
-        self.panel_preview.grid_rowconfigure(1, weight=1)
+        self.panel_preview.grid_rowconfigure(0, weight=1)
         self.panel_preview.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(self.panel_preview, text="Previsualización", font=("Arial", 16, "bold")).grid(row=0, column=0, pady=(15, 10))
-
-        # Contenedor del preview para redimensionado dinámico
+        # Contenedor para el canvas del PDF
         self.frame_preview_container = ctk.CTkFrame(self.panel_preview, fg_color="transparent")
-        self.frame_preview_container.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="nsew")
+        self.frame_preview_container.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="nsew")
         self.frame_preview_container.grid_propagate(False)
         self.frame_preview_container.grid_rowconfigure(0, weight=1)
         self.frame_preview_container.grid_columnconfigure(0, weight=1)
@@ -492,7 +465,7 @@ class MainWindow(Tk):
     def _crear_panel_archivos(self):
         self.panel_archivos = ctk.CTkFrame(self)
         self.panel_archivos.grid(row=0, column=2, padx=(10, 20), pady=20, sticky="nsew")
-        self.panel_archivos.grid_rowconfigure(2, weight=1)
+        self.panel_archivos.grid_rowconfigure(4, weight=1)
         self.panel_archivos.grid_columnconfigure(0, weight=1)
 
         # Encabezado con título y botones de control
@@ -500,41 +473,95 @@ class MainWindow(Tk):
         frame_top_archivos.grid(row=0, column=0, padx=10, pady=(15, 5), sticky="ew")
         frame_top_archivos.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(frame_top_archivos, text="DOCUMENTOS SSC", font=("Arial", 15, "bold")).grid(row=0, column=0, sticky="w")
+        self.lbl_titulo_archivos = ctk.CTkLabel(frame_top_archivos, text="DOCUMENTOS SSC", font=("Arial", 15, "bold"))
+        self.lbl_titulo_archivos.grid(row=0, column=0, sticky="w")
         
         frame_botones_top = ctk.CTkFrame(frame_top_archivos, fg_color="transparent")
         frame_botones_top.grid(row=0, column=1, sticky="e")
 
-        self.btn_refrescar = ctk.CTkButton(frame_botones_top, text="🔄", width=35, height=30, font=("Arial", 14), fg_color="gray30", hover_color="gray40")
+        self.btn_origen = ctk.CTkButton(frame_botones_top, text="📂 Origen", width=80, height=30, font=("Arial", 13), fg_color="gray30", hover_color="gray40")
+        self.btn_origen.pack(side="left", padx=2)
+
+        self.btn_destino = ctk.CTkButton(frame_botones_top, text="📂 Destino", width=80, height=30, font=("Arial", 13), fg_color="gray30", hover_color="gray40")
+        self.btn_destino.pack(side="left", padx=2)
+
+        self.btn_refrescar = ctk.CTkButton(frame_botones_top, text="🔄 Recargar", width=80, height=30, font=("Arial", 13), fg_color="gray30", hover_color="gray40")
         self.btn_refrescar.pack(side="left", padx=2)
 
-        self.btn_cambiar_carpeta = ctk.CTkButton(frame_botones_top, text="📂", width=35, height=30, font=("Arial", 14), fg_color="gray30", hover_color="gray40")
-        self.btn_cambiar_carpeta.pack(side="left", padx=2)
-
-        # Etiqueta con ruta de la carpeta
-        self.lbl_ruta_carpeta = ctk.CTkLabel(
-            self.panel_archivos, 
-            text="", 
-            font=("Arial", 11), 
-            text_color="gray", 
-            anchor="w",
-            wraplength=260
+        # Etiqueta con ruta de la carpeta origen
+        self.frame_ruta_origen = ctk.CTkFrame(self.panel_archivos, fg_color="transparent")
+        self.frame_ruta_origen.grid(row=1, column=0, padx=10, pady=(15, 2), sticky="ew")
+        
+        self.lbl_origen_titulo = ctk.CTkLabel(
+            self.frame_ruta_origen, 
+            text="Origen:", 
+            font=("Arial", 13, "bold"), 
+            text_color="black"
         )
-        self.lbl_ruta_carpeta.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
+        self.lbl_origen_titulo.pack(side="left", padx=(0, 5))
+        
+        self.lbl_ruta_carpeta = ctk.CTkLabel(
+            self.frame_ruta_origen, 
+            text="No seleccionado", 
+            font=("Arial", 14), 
+            text_color="gray"
+        )
+        self.lbl_ruta_carpeta.pack(side="left")
+
+        # Etiqueta con ruta de destino
+        self.frame_ruta_destino = ctk.CTkFrame(self.panel_archivos, fg_color="transparent")
+        self.frame_ruta_destino.grid(row=2, column=0, padx=10, pady=(0, 5), sticky="ew")
+        
+        self.lbl_destino_titulo = ctk.CTkLabel(
+            self.frame_ruta_destino, 
+            text="Destino:", 
+            font=("Arial", 13, "bold"), 
+            text_color="black"
+        )
+        self.lbl_destino_titulo.pack(side="left", padx=(0, 5))
+        
+        self.lbl_ruta_destino = ctk.CTkLabel(
+            self.frame_ruta_destino, 
+            text="Por defecto", 
+            font=("Arial", 14), 
+            text_color="gray"
+        )
+        self.lbl_ruta_destino.pack(side="left")
+
+        # Botón Enviar a Carpeta
+        self.btn_enviar = ctk.CTkButton(
+            self.panel_archivos,
+            text="📤 Enviar a carpeta",
+            font=("Arial", 15, "bold"),
+            fg_color="#10b981", # Verde
+            hover_color="#059669",
+            height=35
+        )
+        self.btn_enviar.grid(row=3, column=0, padx=10, pady=(0, 10), sticky="ew")
 
         # Lista de archivos con Scroll
         self.scroll_archivos = ctk.CTkScrollableFrame(self.panel_archivos)
-        self.scroll_archivos.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+        self.scroll_archivos.grid(row=4, column=0, padx=10, pady=5, sticky="nsew")
         self.scroll_archivos.grid_columnconfigure(0, weight=1)
 
         # Contador inferior
-        self.lbl_total_archivos = ctk.CTkLabel(self.panel_archivos, text="0 archivos encontrados", text_color="gray", font=("Arial", 11))
-        self.lbl_total_archivos.grid(row=3, column=0, padx=10, pady=(5, 10))
+        self.lbl_total_archivos = ctk.CTkLabel(self.panel_archivos, text="0 archivos encontrados", text_color="gray", font=("Arial", 13))
+        self.lbl_total_archivos.grid(row=5, column=0, padx=10, pady=(5, 10))
 
-    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivo_activo=None):
+    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivos_seleccionados=None):
+        if archivos_seleccionados is None:
+            archivos_seleccionados = []
+            
+        if not hasattr(self, 'widgets_lista'):
+            self.widgets_lista = []
+            
         # Limpiar lista anterior
-        for widget in self.scroll_archivos.winfo_children():
-            widget.destroy()
+        for widget in self.widgets_lista:
+            try:
+                widget.destroy()
+            except:
+                pass
+        self.widgets_lista.clear()
 
         self.lbl_total_archivos.configure(text=f"{len(lista_archivos)} archivo(s) PDF encontrado(s)")
 
@@ -543,26 +570,46 @@ class MainWindow(Tk):
             lbl_vacio.pack(pady=30)
             return
 
-        for ruta_completa in lista_archivos:
+        for index, ruta_completa in enumerate(lista_archivos):
             nombre_archivo = os.path.basename(ruta_completa)
-            es_activo = (ruta_completa == archivo_activo)
+            es_activo = (ruta_completa in archivos_seleccionados)
 
             fg_col = "#1f538d" if es_activo else "gray22"
             hover_col = "#14375e" if es_activo else "gray32"
             txt_col = "white"
 
-            btn_item = ctk.CTkButton(
-                self.scroll_archivos,
-                text=f"📄 {nombre_archivo}",
-                anchor="w",
-                font=("Arial", 12, "bold" if es_activo else "normal"),
-                fg_color=fg_col,
-                hover_color=hover_col,
-                text_color=txt_col,
-                height=38,
-                command=lambda r=ruta_completa: callback_click(r)
-            )
-            btn_item.pack(fill="x", padx=3, pady=3)
+            # Reemplazar el botón simple por un contenedor para controlar fuentes independientes
+            frame_item = ctk.CTkFrame(self.scroll_archivos, fg_color=fg_col, corner_radius=6, height=38)
+            frame_item.pack(fill="x", padx=3, pady=3)
+            frame_item.pack_propagate(False)
+            self.widgets_lista.append(frame_item)
+
+            # Icono grande
+            lbl_icon = ctk.CTkLabel(frame_item, text=f"{index + 1}. 📄", font=("Arial", 22), text_color=txt_col)
+            lbl_icon.pack(side="left", padx=(10, 5))
+
+            # Texto normal
+            lbl_text = ctk.CTkLabel(frame_item, text=nombre_archivo, font=("Arial", 14, "bold" if es_activo else "normal"), text_color=txt_col, anchor="w")
+            lbl_text.pack(side="left", fill="x", expand=True)
+
+            # Efectos hover
+            def on_enter(e, f=frame_item, hc=hover_col):
+                f.configure(fg_color=hc)
+            
+            def on_leave(e, f=frame_item, fc=fg_col):
+                f.configure(fg_color=fc)
+                
+            def on_click(e, r=ruta_completa):
+                # Usar after() para evitar que Tkinter crashee silenciosamente al destruir 
+                # los widgets desde el mismo evento del ratón que los disparó.
+                self.scroll_archivos.after(10, lambda: callback_click(r))
+
+            frame_item.bind("<Enter>", on_enter)
+            frame_item.bind("<Leave>", on_leave)
+            
+            frame_item.bind("<Button-1>", on_click)
+            lbl_icon.bind("<Button-1>", on_click)
+            lbl_text.bind("<Button-1>", on_click)
 
     def actualizar_contador(self, cantidad):
         self.lbl_contador.configure(text=f"{cantidad} archivos seleccionados")
