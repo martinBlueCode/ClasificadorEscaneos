@@ -4,7 +4,7 @@ from controllers.app_controller import AppController
 
 def main():
     # Configuración de apariencia
-    ctk.set_appearance_mode("System")  # Modo oscuro/claro según el sistema
+    ctk.set_appearance_mode("Light")  # Modo tradicional (claro)
     ctk.set_default_color_theme("blue")  # Tema base de colores
 
     # Instanciar la vista principal

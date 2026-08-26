@@ -3,7 +3,7 @@ import tkinter.messagebox as messagebox
 from tkinter import filedialog
 from models.file_manager import FileManager
 import json
-from config import RUTA_ORIGEN_DEFECTO
+from config import RUTA_ORIGEN_DEFECTO, DICCIONARIO_SUBMENUS_MAESTRO, CONFIGURACION_SUBMENUS
 
 SETTINGS_FILE = "settings.json"
 
@@ -63,22 +63,22 @@ class AppController:
         # Conectar evento de Drag and Drop (opcional si arrastran archivos encima)
         self.view.dnd_bind('<<Drop>>', self.cargar_escaneos_dnd)
         
-        # Conectar los botones de clasificación dinámicamente
+        # Conectar los botones de clasificación dinámicamente con el diccionario maestro
         for btn in self.view.botones_clasificacion:
             name = btn.cget("text")
-            if name == "VVE":
-                # Al hacer clic directo en VVE ya no clasifica directo, abre menú
-                # Agregar menú de clic
+            if name in CONFIGURACION_SUBMENUS:
+                lista_claves = CONFIGURACION_SUBMENUS[name]
+                options = {clave: DICCIONARIO_SUBMENUS_MAESTRO.get(clave, clave) for clave in lista_claves}
                 from views.main_window import ClickMenu
-                options = {
-                    "Oficio Comision": "OC",
-                    "Citatorio": "CT",
-                    "Orden": "OR",
-                    "Carta de derechos": "CD",
-                    "Acta": "AC",
-                    "Informe de Inejecucion": "II"
-                }
-                ClickMenu(btn, options, self.clasificar_con_subopcion)
+                clasif_info = next((c for c in getattr(self.view, 'clasificaciones', []) if c["nombre"] == name), {})
+                resalte = clasif_info.get("resalte_submenu")
+                ClickMenu(
+                    btn, 
+                    options, 
+                    lambda sub, pref=name, opt=options: self.clasificar_con_subopcion(pref, sub, opt),
+                    active_bg=resalte,
+                    active_fg=clasif_info.get("text_color") if resalte else None
+                )
             else:
                 btn.configure(command=lambda c=name: self.clasificar_escaneos(c))
 
@@ -113,11 +113,8 @@ class AppController:
     def refrescar_carpeta(self):
         if self.ruta_carpeta_origen and os.path.exists(self.ruta_carpeta_origen):
             self.view.lbl_ruta_carpeta.configure(text=f"{self.ruta_carpeta_origen}")
-            nombre_carpeta = os.path.basename(self.ruta_carpeta_origen)
-            self.view.lbl_titulo_archivos.configure(text=nombre_carpeta.upper())
         else:
             self.view.lbl_ruta_carpeta.configure(text="No seleccionado")
-            self.view.lbl_titulo_archivos.configure(text="SIN CARPETA")
             
         self.archivos_en_carpeta = []
 
@@ -189,17 +186,19 @@ class AppController:
         else:
             messagebox.showwarning("Advertencia", "Los archivos arrastrados no son documentos PDF válidos (.pdf).")
 
-    def clasificar_con_subopcion(self, sub_opcion: str):
-        siglas_map = {
-            "Oficio Comision": "OC",
-            "Citatorio": "CT",
-            "Orden": "OR",
-            "Carta de derechos": "CD",
-            "Acta": "AC",
-            "Informe de Inejecucion": "II"
-        }
+    def clasificar_con_subopcion(self, prefijo_boton: str, sub_opcion: str, siglas_map: dict = None):
+        if siglas_map is None:
+            siglas_map = {
+                "Oficio Comision": "OC",
+                "Citatorio": "CT",
+                "Orden": "OR",
+                "Carta de derechos": "CD",
+                "Acta": "AC",
+                "Acuerdo": "ACU",
+                "Informe de Inejecucion": "II"
+            }
         siglas = siglas_map.get(sub_opcion, sub_opcion)
-        self.clasificar_escaneos(f"VVE_{siglas}")
+        self.clasificar_escaneos(f"{prefijo_boton}_{siglas}")
 
     def clasificar_escaneos(self, clasificacion: str):
         # Solo renombra en sitio
@@ -246,22 +245,15 @@ class AppController:
             
         expediente = self.view.entry_expediente.get().strip()
         
-        exitos = 0
-        errores = []
-        for ruta in list(self.archivos_seleccionados):
-            exito, mensaje = self.model.enviar_archivo(expediente, ruta)
-            if exito:
-                exitos += 1
+        exito, reporte, stats = self.model.enviar_archivos_lote(expediente, self.archivos_seleccionados)
+        if exito:
+            if stats.get("errores"):
+                errores_txt = "\n".join(stats["errores"])
+                messagebox.showwarning("Enviados con advertencias", f"{reporte}\n\nAdvertencias:\n{errores_txt}")
             else:
-                errores.append(f"{os.path.basename(ruta)}: {mensaje}")
-                
-        if exitos > 0:
-            if errores:
-                messagebox.showwarning("Enviados con errores", f"Se enviaron {exitos} archivo(s).\nErrores:\n" + "\n".join(errores))
-            else:
-                messagebox.showinfo("Éxito", f"Se enviaron {exitos} archivo(s) a su carpeta destino.")
+                messagebox.showinfo("Reporte de Envío", reporte)
         else:
-            messagebox.showerror("Error", "No se pudo enviar ningún archivo.\n" + "\n".join(errores))
+            messagebox.showerror("Error", reporte)
             
         self.refrescar_carpeta()
 
