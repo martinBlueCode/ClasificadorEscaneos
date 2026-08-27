@@ -54,14 +54,25 @@ def compilar():
     print(f"📦 Compilando ejecutable: {nombre_ejecutable}.exe")
     print(f"=======================================================\n")
     
+    import os
+    
+    # Detectar si usa OneDrive para el escritorio
+    escritorio_onedrive = os.path.join(os.environ['USERPROFILE'], 'OneDrive', 'Escritorio')
+    if os.path.exists(escritorio_onedrive):
+        escritorio = escritorio_onedrive
+    else:
+        escritorio = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+    
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconsole",
         "--onefile",
         "--clean",
         "--name", nombre_ejecutable,
+        "--distpath", escritorio,
         "--hidden-import", "customtkinter",
         "--hidden-import", "tkinterdnd2",
+        "--hidden-import", "pymupdf",
         "--hidden-import", "fitz",
         "--hidden-import", "PIL",
         "--collect-all", "customtkinter",
@@ -73,7 +84,7 @@ def compilar():
     if res.returncode == 0:
         print(f"\n=======================================================")
         print(f"✅ ¡Compilacion exitosa!")
-        print(f"📁 Ubicacion: dist/{nombre_ejecutable}.exe")
+        print(f"📁 Ubicacion: {escritorio}\\{nombre_ejecutable}.exe")
         print(f"=======================================================\n")
     else:
         print(f"\n❌ Error al compilar (codigo {res.returncode})\n")
