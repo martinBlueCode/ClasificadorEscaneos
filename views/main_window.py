@@ -241,9 +241,9 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.pref_combo = ctk.CTkOptionMenu(
             self,
             values=["INVEACDMX", "INVEADF"],
-            width=110,
-            font=("Arial", 13),
-            dropdown_font=("Arial", 13)
+            width=115, # Aumentado 15%
+            font=("Arial", 14),
+            dropdown_font=("Arial", 14)
         )
         self.pref_combo.grid(row=0, column=0, padx=(0, 2), sticky="w")
         self.pref_combo.set("INVEACDMX")  # Valor por defecto
@@ -251,18 +251,18 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         # 2. Separador Fijo: /OV/
         self.lbl_ov = ctk.CTkLabel(
             self,
-            text="/OV/",
+            text="/",
             font=("Arial", 14, "bold")
         )
         self.lbl_ov.grid(row=0, column=1, padx=2, sticky="w")
         
-        # 3. Selector de Materia (DU, MP, IO, A, AFO, DUYUS, MOBUR)
+        # 3. Selector de Materia
         self.materia_combo = ctk.CTkOptionMenu(
             self,
             values=["DU", "MP", "IO", "A", "AFO", "DUYUS", "MOBUR"],
-            width=90,
-            font=("Arial", 13),
-            dropdown_font=("Arial", 13)
+            width=88, # Aumentado 15%
+            font=("Arial", 14),
+            dropdown_font=("Arial", 14)
         )
         self.materia_combo.grid(row=0, column=2, padx=2, sticky="w")
         self.materia_combo.set("DU")  # Valor por defecto
@@ -282,8 +282,8 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.num_entry = ctk.CTkEntry(
             self,
             textvariable=self.num_var,
-            width=60,
-            font=("Arial", 13)
+            width=63, # Aumentado 15%
+            font=("Arial", 14)
         )
         self.num_entry.grid(row=0, column=4, padx=2, sticky="w")
         
@@ -303,9 +303,9 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.year_combo = ctk.CTkOptionMenu(
             self,
             values=years,
-            width=80,
-            font=("Arial", 13),
-            dropdown_font=("Arial", 13)
+            width=88, # Aumentado 15%
+            font=("Arial", 14),
+            dropdown_font=("Arial", 14)
         )
         self.year_combo.grid(row=0, column=6, padx=(2, 0), sticky="w")
         self.year_combo.set("")  # En blanco por defecto
@@ -362,10 +362,11 @@ class MainWindow(Tk):
         self.geometry(f"{self.init_w}x{self.init_h}+{pos_x}+{pos_y}")
         self.minsize(int(screen_w * 0.5), int(screen_h * 0.5))
 
-        # Configurar grid (3 columnas: Izquierda - Formulario/Clasificación, Centro - Previsualización, Derecha - Lista de Archivos)
-        self.grid_columnconfigure(0, weight=0, minsize=380)
-        self.grid_columnconfigure(1, weight=1, minsize=420)
-        self.grid_columnconfigure(2, weight=1, minsize=360)
+        # Configurar grid con 'uniform' para forzar porcentajes estrictos independientemente del contenido
+        # 3 columnas: Izquierda 25%, Centro 50%, Derecha 25%
+        self.grid_columnconfigure(0, weight=25, uniform="grupos_paneles")
+        self.grid_columnconfigure(1, weight=45, uniform="grupos_paneles")
+        self.grid_columnconfigure(2, weight=30, uniform="grupos_paneles")
         self.grid_rowconfigure(0, weight=1)
 
         self._crear_panel_izquierdo()
@@ -469,10 +470,20 @@ class MainWindow(Tk):
         self.lbl_preview = ctk.CTkLabel(self.frame_preview_container, text="Sin documento", fg_color=("gray85", "gray20"), text_color=("gray40", "gray70"), corner_radius=10)
         self.lbl_preview.grid(row=0, column=0, sticky="nsew")
         
-        # Atributos para redimensionamiento
+        # Atributos para redimensionamiento y zoom
         self.original_img = None
         self.resize_timer = None
+        self.zoom_level = 1.0
+        self.pan_x = 0
+        self.pan_y = 0
+        self.drag_start_x = 0
+        self.drag_start_y = 0
         self.frame_preview_container.bind("<Configure>", self.on_resize)
+        
+        # Eventos de ratón para interactividad
+        self.lbl_preview.bind("<Button-1>", self.on_preview_click)
+        self.lbl_preview.bind("<B1-Motion>", self.on_preview_drag)
+        self.lbl_preview.bind("<Button-3>", self.on_preview_right_click)
 
         # Controles de navegación PDF
         self.frame_nav = ctk.CTkFrame(self.panel_preview, fg_color="transparent")
@@ -523,14 +534,14 @@ class MainWindow(Tk):
         self.lbl_origen_titulo = ctk.CTkLabel(
             self.frame_ruta_origen, 
             text="Origen:", 
-            font=("Arial", 17, "bold")
+            font=("Arial", 15, "bold")
         )
         self.lbl_origen_titulo.pack(side="left", padx=(0, 5))
         
         self.lbl_ruta_carpeta = ctk.CTkLabel(
             self.frame_ruta_origen, 
             text="No seleccionado", 
-            font=("Arial", 18), 
+            font=("Arial", 16), 
             text_color=("#0284c7", "#38bdf8")
         )
         self.lbl_ruta_carpeta.pack(side="left")
@@ -542,14 +553,14 @@ class MainWindow(Tk):
         self.lbl_destino_titulo = ctk.CTkLabel(
             self.frame_ruta_destino, 
             text="Destino:", 
-            font=("Arial", 17, "bold")
+            font=("Arial", 15, "bold")
         )
         self.lbl_destino_titulo.pack(side="left", padx=(0, 5))
         
         self.lbl_ruta_destino = ctk.CTkLabel(
             self.frame_ruta_destino, 
             text="Por defecto", 
-            font=("Arial", 18), 
+            font=("Arial", 16), 
             text_color=("#0284c7", "#38bdf8")
         )
         self.lbl_ruta_destino.pack(side="left")
@@ -574,7 +585,41 @@ class MainWindow(Tk):
         self.lbl_total_archivos = ctk.CTkLabel(self.panel_archivos, text="0 archivos encontrados", text_color="gray", font=("Arial", 13))
         self.lbl_total_archivos.grid(row=2, column=0, padx=10, pady=(5, 10))
 
-    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivos_seleccionados=None):
+
+    def actualizar_seleccion(self, archivos_seleccionados):
+        if not hasattr(self, 'widgets_lista'): return
+        is_light = ctk.get_appearance_mode() == "Light"
+        import re
+        patron = r"^\d{4}-\d{2}-\d{2}[-].+\.pdf$"
+        
+        for item in self.widgets_lista:
+            if not isinstance(item, tuple): continue
+            frame_item, lbl_icon, lbl_text, ruta_completa = item
+            nombre_archivo = os.path.basename(ruta_completa)
+            es_activo = (ruta_completa in archivos_seleccionados)
+            es_renombrado = bool(re.match(patron, nombre_archivo, re.IGNORECASE))
+            
+            if es_activo:
+                fg_col = "#1f538d"
+                txt_col = "white"
+                hover_col = "#14375e"
+            elif es_renombrado:
+                fg_col = "#fed7aa" if is_light else "#9a3412"
+                txt_col = "#0f172a" if is_light else "white"
+                hover_col = "#fdba74" if is_light else "#7c2d12"
+            else:
+                fg_col = "#e2e8f0" if is_light else "gray22"
+                txt_col = "#0f172a" if is_light else "white"
+                hover_col = "#cbd5e1" if is_light else "gray32"
+                
+            frame_item.configure(fg_color=fg_col)
+            frame_item.base_fg = fg_col
+            frame_item.hover_bg = hover_col
+            
+            lbl_icon.configure(text_color=txt_col)
+            lbl_text.configure(text_color=txt_col, font=("Arial", 14, "bold" if es_activo else "normal"))
+
+    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivos_seleccionados=None, callback_rename=None):
         if archivos_seleccionados is None:
             archivos_seleccionados = []
             
@@ -582,34 +627,17 @@ class MainWindow(Tk):
             self.widgets_lista = []
             
         # Limpiar lista anterior
-        for widget in self.widgets_lista:
+        for item in self.widgets_lista:
             try:
-                widget.destroy()
+                if isinstance(item, tuple):
+                    item[0].destroy()
+                else:
+                    item.destroy()
             except:
                 pass
         self.widgets_lista.clear()
 
         self.lbl_total_archivos.configure(text=f"{len(lista_archivos)} archivo(s) PDF encontrado(s)")
-
-        # Calcular ancho necesario según el nombre de archivo más largo
-        import tkinter.font as tkFont
-        font_medicion = tkFont.Font(family="Arial", size=14, weight="bold")
-        if lista_archivos:
-            max_text_width = max(font_medicion.measure(os.path.basename(f)) for f in lista_archivos)
-            ancho_panel_calculado = max(360, max_text_width + 125)
-        else:
-            ancho_panel_calculado = 360
-
-        self.grid_columnconfigure(2, minsize=ancho_panel_calculado)
-
-        # Si el ancho de la ventana es menor que el requerido, ampliarla automáticamente sin reducir la altura
-        try:
-            ancho_total_requerido = 380 + 420 + ancho_panel_calculado + 60
-            alto_objetivo = max(self.winfo_height(), getattr(self, 'init_h', 720))
-            if self.winfo_width() > 1 and self.winfo_width() < ancho_total_requerido:
-                self.geometry(f"{ancho_total_requerido}x{alto_objetivo}")
-        except Exception:
-            pass
 
         if not lista_archivos:
             lbl_vacio = ctk.CTkLabel(self.scroll_archivos, text="No hay archivos PDF en la carpeta", text_color="gray")
@@ -617,15 +645,22 @@ class MainWindow(Tk):
             return
 
         is_light = ctk.get_appearance_mode() == "Light"
+        import re
+        patron = r"^\d{4}-\d{2}-\d{2}[-].+\.pdf$"
 
         for index, ruta_completa in enumerate(lista_archivos):
             nombre_archivo = os.path.basename(ruta_completa)
             es_activo = (ruta_completa in archivos_seleccionados)
+            es_renombrado = bool(re.match(patron, nombre_archivo, re.IGNORECASE))
 
             if es_activo:
                 fg_col = "#1f538d"
                 hover_col = "#14375e"
                 txt_col = "white"
+            elif es_renombrado:
+                fg_col = "#fed7aa" if is_light else "#9a3412"
+                hover_col = "#fdba74" if is_light else "#7c2d12"
+                txt_col = "#0f172a" if is_light else "white"
             else:
                 fg_col = "#e2e8f0" if is_light else "gray22"
                 hover_col = "#cbd5e1" if is_light else "gray32"
@@ -635,7 +670,9 @@ class MainWindow(Tk):
             frame_item = ctk.CTkFrame(self.scroll_archivos, fg_color=fg_col, corner_radius=6, height=38)
             frame_item.pack(fill="x", padx=3, pady=3)
             frame_item.pack_propagate(False)
-            self.widgets_lista.append(frame_item)
+            
+            frame_item.base_fg = fg_col
+            frame_item.hover_bg = hover_col
 
             # Icono grande
             lbl_icon = ctk.CTkLabel(frame_item, text=f"{index + 1}. 📄", font=("Arial", 22), text_color=txt_col)
@@ -644,18 +681,46 @@ class MainWindow(Tk):
             # Texto normal
             lbl_text = ctk.CTkLabel(frame_item, text=nombre_archivo, font=("Arial", 14, "bold" if es_activo else "normal"), text_color=txt_col, anchor="w")
             lbl_text.pack(side="left", fill="x", expand=True)
+            self.widgets_lista.append((frame_item, lbl_icon, lbl_text, ruta_completa))
 
-            # Efectos hover
-            def on_enter(e, f=frame_item, hc=hover_col):
-                f.configure(fg_color=hc)
+            # Efectos hover dinámicos
+            def on_enter(e, f=frame_item):
+                f.configure(fg_color=getattr(f, 'hover_bg', f.cget('fg_color')))
             
-            def on_leave(e, f=frame_item, fc=fg_col):
-                f.configure(fg_color=fc)
+            def on_leave(e, f=frame_item):
+                f.configure(fg_color=getattr(f, 'base_fg', f.cget('fg_color')))
                 
             def on_click(e, r=ruta_completa):
-                # Usar after() para evitar que Tkinter crashee silenciosamente al destruir 
-                # los widgets desde el mismo evento del ratón que los disparó.
                 self.scroll_archivos.after(10, lambda: callback_click(r))
+                
+            def on_double_click(e, frame=frame_item, lbl=lbl_text, original_path=ruta_completa, name=nombre_archivo):
+                if not callback_rename: return
+                lbl.pack_forget()
+                entry = ctk.CTkEntry(frame, font=("Arial", 14), text_color=lbl.cget("text_color"), fg_color="transparent")
+                entry.pack(side="left", fill="x", expand=True)
+                
+                nombre_base = name[:-4] if name.lower().endswith(".pdf") else name
+                entry.insert(0, nombre_base)
+                entry.focus()
+                
+                def cancel_edit(ev=None):
+                    try:
+                        entry.pack_forget()
+                        lbl.pack(side="left", fill="x", expand=True)
+                        entry.destroy()
+                    except:
+                        pass
+                
+                def on_edit_finish(ev=None):
+                    nuevo_texto = entry.get().strip()
+                    if nuevo_texto and nuevo_texto != nombre_base:
+                        callback_rename(original_path, nuevo_texto)
+                    else:
+                        cancel_edit()
+                        
+                entry.bind("<Return>", on_edit_finish)
+                entry.bind("<Escape>", cancel_edit)
+                entry.bind("<FocusOut>", cancel_edit)
 
             frame_item.bind("<Enter>", on_enter)
             frame_item.bind("<Leave>", on_leave)
@@ -663,6 +728,9 @@ class MainWindow(Tk):
             frame_item.bind("<Button-1>", on_click)
             lbl_icon.bind("<Button-1>", on_click)
             lbl_text.bind("<Button-1>", on_click)
+            
+            # Doble clic sobre el texto
+            lbl_text.bind("<Double-Button-1>", on_double_click)
 
     def mostrar_preview(self, ruta_documento):
         try:
@@ -702,6 +770,11 @@ class MainWindow(Tk):
             self.btn_prev.configure(state="normal" if self.current_page > 0 else "disabled")
             self.btn_next.configure(state="normal" if self.current_page < self.total_pages - 1 else "disabled")
             
+            # Resetear zoom al cambiar de página
+            self.zoom_level = 1.0
+            self.pan_x = 0
+            self.pan_y = 0
+            
             # Renderizar al tamaño actual del contenedor
             self.actualizar_imagen_preview()
             
@@ -724,18 +797,170 @@ class MainWindow(Tk):
         if cw < 50 or ch < 50:
             return
             
-        # Calcular aspect ratio para no deformar
+        # Calcular aspect ratio base para ajustar a la ventana
         img_w, img_h = self.original_img.size
         ratio_w = cw / img_w
         ratio_h = ch / img_h
-        ratio = min(ratio_w, ratio_h)
+        base_ratio = min(ratio_w, ratio_h)
         
-        new_w = int(img_w * ratio)
-        new_h = int(img_h * ratio)
+        zoom = getattr(self, "zoom_level", 1.0)
         
-        if new_w > 0 and new_h > 0:
-            ctk_img = ctk.CTkImage(light_image=self.original_img, dark_image=self.original_img, size=(new_w, new_h))
-            self.lbl_preview.configure(image=ctk_img, text="")
+        if zoom == 1.0:
+            # Tamaño normal (Fit)
+            new_w = int(img_w * base_ratio)
+            new_h = int(img_h * base_ratio)
+            
+            if new_w > 0 and new_h > 0:
+                ctk_img = ctk.CTkImage(light_image=self.original_img, dark_image=self.original_img, size=(new_w, new_h))
+                self.lbl_preview.configure(image=ctk_img, text="")
+        else:
+            # Tamaño agrandado (Zoom)
+            pan_x = getattr(self, "pan_x", 0)
+            pan_y = getattr(self, "pan_y", 0)
+            
+            scale_factor = base_ratio * zoom
+            
+            # Coordenadas de la porción visible respecto a la imagen original de alta resolución
+            left = pan_x / scale_factor
+            top = pan_y / scale_factor
+            right = (pan_x + cw) / scale_factor
+            bottom = (pan_y + ch) / scale_factor
+            
+            # Asegurar límites dentro de la imagen original
+            left = max(0, min(left, img_w))
+            top = max(0, min(top, img_h))
+            right = max(0, min(right, img_w))
+            bottom = max(0, min(bottom, img_h))
+            
+            # Recortar solo lo que se va a mostrar
+            cropped_img = self.original_img.crop((left, top, right, bottom))
+            
+            # El tamaño en pantalla de este recorte
+            disp_w = int((right - left) * scale_factor)
+            disp_h = int((bottom - top) * scale_factor)
+            
+            if disp_w > 0 and disp_h > 0:
+                ctk_img = ctk.CTkImage(light_image=cropped_img, dark_image=cropped_img, size=(disp_w, disp_h))
+                self.lbl_preview.configure(image=ctk_img, text="")
+
+    def on_preview_click(self, event):
+        if not self.original_img: return
+        self.drag_start_x = event.x
+        self.drag_start_y = event.y
+        
+        zoom_levels = [1.0, 1.5, 1.75, 2.0]
+        current_zoom = getattr(self, "zoom_level", 1.0)
+        
+        try:
+            current_idx = zoom_levels.index(current_zoom)
+        except ValueError:
+            current_idx = 0
+            
+        if current_idx < len(zoom_levels) - 1:
+            old_zoom = current_zoom
+            new_zoom = zoom_levels[current_idx + 1]
+            self.zoom_level = new_zoom
+            
+            cw = self.frame_preview_container.winfo_width()
+            ch = self.frame_preview_container.winfo_height()
+            img_w, img_h = self.original_img.size
+            base_ratio = min(cw / img_w, ch / img_h)
+            full_scaled_w = int(img_w * base_ratio * self.zoom_level)
+            full_scaled_h = int(img_h * base_ratio * self.zoom_level)
+            
+            if old_zoom == 1.0:
+                # Calcular el offset que CTkLabel aplica para centrar la imagen ajustada
+                offset_x = (cw - int(img_w * base_ratio)) / 2
+                offset_y = (ch - int(img_h * base_ratio)) / 2
+                
+                # Posición del clic relativa a la imagen (en escala 1.0)
+                img_x = event.x - offset_x
+                img_y = event.y - offset_y
+                
+                # Nueva posición de ese punto en la imagen agrandada
+                ratio = new_zoom / old_zoom
+                new_img_x = img_x * ratio
+                new_img_y = img_y * ratio
+                
+                # Ajustar pan para que el punto siga bajo el cursor
+                self.pan_x = int(new_img_x - event.x)
+                self.pan_y = int(new_img_y - event.y)
+            else:
+                # Mantener el punto actual bajo el cursor
+                ratio = new_zoom / old_zoom
+                self.pan_x = int((self.pan_x + event.x) * ratio - event.x)
+                self.pan_y = int((self.pan_y + event.y) * ratio - event.y)
+                
+            # Clamp
+            max_pan_x = max(0, full_scaled_w - cw)
+            max_pan_y = max(0, full_scaled_h - ch)
+            self.pan_x = max(0, min(self.pan_x, max_pan_x))
+            self.pan_y = max(0, min(self.pan_y, max_pan_y))
+                
+            self.actualizar_imagen_preview()
+
+    def on_preview_drag(self, event):
+        if not self.original_img or getattr(self, "zoom_level", 1.0) == 1.0: return
+        
+        dx = event.x - self.drag_start_x
+        dy = event.y - self.drag_start_y
+        self.drag_start_x = event.x
+        self.drag_start_y = event.event_y if hasattr(event, "event_y") else event.y
+        
+        self.pan_x -= dx
+        self.pan_y -= dy
+        
+        # Clamp
+        cw = self.frame_preview_container.winfo_width()
+        ch = self.frame_preview_container.winfo_height()
+        img_w, img_h = self.original_img.size
+        base_ratio = min(cw / img_w, ch / img_h)
+        full_scaled_w = int(img_w * base_ratio * self.zoom_level)
+        full_scaled_h = int(img_h * base_ratio * self.zoom_level)
+        
+        max_pan_x = max(0, full_scaled_w - cw)
+        max_pan_y = max(0, full_scaled_h - ch)
+        
+        self.pan_x = max(0, min(self.pan_x, max_pan_x))
+        self.pan_y = max(0, min(self.pan_y, max_pan_y))
+        
+        self.actualizar_imagen_preview()
+
+    def on_preview_right_click(self, event):
+        zoom_levels = [1.0, 1.5, 1.75, 2.0]
+        current_zoom = getattr(self, "zoom_level", 1.0)
+        
+        try:
+            current_idx = zoom_levels.index(current_zoom)
+        except ValueError:
+            current_idx = 0
+            
+        if current_idx > 0:
+            old_zoom = current_zoom
+            new_zoom = zoom_levels[current_idx - 1]
+            self.zoom_level = new_zoom
+            
+            if new_zoom == 1.0:
+                self.pan_x = 0
+                self.pan_y = 0
+            else:
+                cw = self.frame_preview_container.winfo_width()
+                ch = self.frame_preview_container.winfo_height()
+                img_w, img_h = self.original_img.size
+                base_ratio = min(cw / img_w, ch / img_h)
+                full_scaled_w = int(img_w * base_ratio * self.zoom_level)
+                full_scaled_h = int(img_h * base_ratio * self.zoom_level)
+                
+                ratio = new_zoom / old_zoom
+                self.pan_x = int((self.pan_x + event.x) * ratio - event.x)
+                self.pan_y = int((self.pan_y + event.y) * ratio - event.y)
+                
+                max_pan_x = max(0, full_scaled_w - cw)
+                max_pan_y = max(0, full_scaled_h - ch)
+                self.pan_x = max(0, min(self.pan_x, max_pan_x))
+                self.pan_y = max(0, min(self.pan_y, max_pan_y))
+                
+            self.actualizar_imagen_preview()
 
     def pagina_anterior(self):
         if self.current_page > 0:
@@ -752,6 +977,9 @@ class MainWindow(Tk):
         self.current_page = 0
         self.total_pages = 0
         self.original_img = None
+        self.zoom_level = 1.0
+        self.pan_x = 0
+        self.pan_y = 0
         self.lbl_preview.configure(image=None, text="Sin imagen")
         self.lbl_pagina.configure(text="Página 0 / 0")
         self.btn_prev.configure(state="disabled")

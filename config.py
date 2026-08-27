@@ -32,8 +32,8 @@ def obtener_color_texto_oscuro(hex_color):
 # Definición de botones (sin color, se asigan dinámicamente)
 DEFINICION_BOTONES = [
     ("VVE", "Visitas de verificacion"),
-    ("VVC", "Visitas de verificacion complementaria"),
     ("IMC", "Medidas Cautelares"),
+    ("VVC", "Visitas de verificacion complementaria"),
     ("CLA", "Clausura"),
     ("IO", "Inspecciones Oculares"),
     ("RTS", "Retiro de sellos"),
@@ -151,19 +151,21 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Retiro de Sellos IMC": "RTS_IMC-AC",
 
     # Inspecciones
-    "IO/IMC": "IMC-AC",
-    "IO/CLA": "CLA-AC",
-    "RPS/IMC": "RPS-IMC-AC",
-    "RPS/CLA": "RPS-CLA-AC",
-    "Acuerdo/IMC": "RPS-IMC-AD",
-    "Acuerdo/CLA": "RPS-CLA-AD",
+    "Acta IO/IMC": "IMC-AC",
+    "Acta IO/CLA": "CLA-AC",
+    "Acta RPS/IMC": "RPS-IMC-AC",
+    "Acta RPS/CLA": "RPS-CLA-AC",
+    "Acta Acuerdo/IMC": "RPS-IMC-AD",
+    "Acta Acuerdo/CLA": "RPS-CLA-AD",
+
     # Retiros
-    "RTS/IMC": "IMC-AC",
-    "RTS/CLA": "CLA-AC",
+    "Acta RTS/IMC": "IMC-AC",
+    "Acta RTS/CLA": "CLA-AC",
     "Acuerdo/IMC": "IMC-AD",
     "Acuerdo/CLA": "CLA-AD",
     "Acuerdo/RTS/IMC": "IMC-AD",
-    "Acuerdo/RTS/CLA": "CLA-AD"
+    "Acuerdo/RTS/CLA": "CLA-AD",
+    "Cedula NAC/CE": "NAC-CE",
     
 }
 
@@ -211,18 +213,18 @@ CONFIGURACION_SUBMENUS = {
         "Oficio Comision RPS/CLA",
         "Acta",         
         "Acuerdo", 
-        "RPS/IMC",
-        "RPS/CLA",
-        "IO/IMC",
-        "IO/CLA"        
+        "Acta RPS/IMC",
+        "Acta RPS/CLA",
+        "Acta IO/IMC",
+        "Acta IO/CLA"        
     ],
     "RTS": [        
         "Oficio Comision RTS/IMC",
         "Oficio Comision RTS/CLA",        
+        "Cedula NAC/CE",
         "Acuerdo/RTS/IMC", 
         "Acuerdo/RTS/CLA",
-        "RTS/IMC",
-        "RTS/CLA"
-        
+        "Acta RTS/IMC",
+        "Acta RTS/CLA"        
     ]
 }

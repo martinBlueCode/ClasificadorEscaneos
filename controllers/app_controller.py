@@ -132,6 +132,9 @@ class AppController:
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo leer la carpeta:\n{str(e)}")
 
+        # Forzar reconstrucción visual de la lista
+        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
+
         # Si el archivo activo ya no existe o no hay ninguno, seleccionar el primero disponible
         if self.archivos_en_carpeta:
             if not self.archivo_activo or self.archivo_activo not in self.archivos_en_carpeta:
@@ -140,7 +143,7 @@ class AppController:
                 self.seleccionar_archivo(self.archivo_activo)
         else:
             self.limpiar_estado()
-            self.view.mostrar_lista_archivos([], self.seleccionar_archivo, None)
+            self.view.mostrar_lista_archivos([], self.seleccionar_archivo, None, getattr(self, 'renombrar_manual', None))
 
     def on_ctrl_press(self, event):
         self.ctrl_pressed = True
@@ -175,7 +178,10 @@ class AppController:
             self.limpiar_estado()
             return
             
-        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados)
+        if hasattr(self.view, 'actualizar_seleccion'):
+            self.view.actualizar_seleccion(self.archivos_seleccionados)
+        else:
+            self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
 
     def cargar_escaneos_dnd(self, event):
         archivos = self.view.tk.splitlist(event.data)
@@ -210,6 +216,9 @@ class AppController:
             if self.archivo_activo in self.archivos_en_carpeta:
                 idx = self.archivos_en_carpeta.index(self.archivo_activo)
                 self.archivos_en_carpeta[idx] = nueva_ruta
+            
+            # Reconstruir la lista visualmente porque el nombre cambió
+            self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
             
             # Mantener seleccionado
             self.seleccionar_archivo(nueva_ruta)
@@ -250,9 +259,25 @@ class AppController:
             
         self.refrescar_carpeta()
 
+
+    def renombrar_manual(self, ruta_archivo, nuevo_nombre_base):
+        exito, mensaje, nueva_ruta = self.model.renombrar_archivo_en_sitio(nuevo_nombre_base, ruta_archivo)
+        if exito:
+            if self.archivo_activo == ruta_archivo:
+                self.archivo_activo = nueva_ruta
+                
+            if ruta_archivo in self.archivos_seleccionados:
+                idx = self.archivos_seleccionados.index(ruta_archivo)
+                self.archivos_seleccionados[idx] = nueva_ruta
+                
+            self.refrescar_carpeta()
+        else:
+            messagebox.showerror("Error al renombrar", mensaje)
+            self.refrescar_carpeta()
+
     def limpiar_estado(self):
         self.archivo_activo = None
         self.archivos_seleccionados = []
         self.view.lbl_archivo_activo.configure(text="Ninguno", text_color="gray")
         self.view.limpiar_preview()
-        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, None)
+        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, None, getattr(self, 'renombrar_manual', None))

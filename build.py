@@ -8,53 +8,49 @@ RUTA_VERSION = os.path.join(os.path.dirname(__file__), "version.py")
 
 def incrementar_version(version_str: str) -> str:
     """
-    Incrementa la versión en base decimal de 3 dígitos (X.Y.Z donde cada uno llega a 9).
+    Incrementa la versión en formato X.Y
     Ejemplos:
-    0.0.1 -> 0.0.2
-    0.0.9 -> 0.1.0
-    0.1.9 -> 0.2.0
-    0.9.9 -> 1.0.0
+    0.1 -> 0.2
+    0.9 -> 1.0
+    1.0 -> 1.1
     """
     partes = version_str.strip().split('.')
-    if len(partes) != 3:
-        major, minor, patch = 0, 0, 1
+    if len(partes) != 2:
+        major, minor = 0, 0
     else:
         try:
-            major, minor, patch = int(partes[0]), int(partes[1]), int(partes[2])
+            major, minor = int(partes[0]), int(partes[1])
         except ValueError:
-            major, minor, patch = 0, 0, 1
+            major, minor = 0, 0
 
-    # Calcular correlativo numérico y sumar 1
-    numero_actual = major * 100 + minor * 10 + patch
-    nuevo_numero = numero_actual + 1
+    minor += 1
+    if minor >= 10:
+        major += 1
+        minor = 0
 
-    nuevo_major = nuevo_numero // 100
-    nuevo_minor = (nuevo_numero % 100) // 10
-    nuevo_patch = nuevo_numero % 10
-
-    return f"{nuevo_major}.{nuevo_minor}.{nuevo_patch}"
+    return f"{major}.{minor}"
 
 def actualizar_archivo_version(nueva_version: str):
-    contenido = f'VERSION = "{nueva_version}"\nNOMBRE_APP = f"Renombrar Escaneos V.{{VERSION}}"\n'
+    contenido = f'VERSION = "{nueva_version}"\nNOMBRE_APP = f"Renombrar Escaneos MB. {{VERSION}}"\n'
     with open(RUTA_VERSION, "w", encoding="utf-8") as f:
         f.write(contenido)
 
 def obtener_version_actual() -> str:
     if not os.path.exists(RUTA_VERSION):
-        return "0.0.0"
+        return "0.0"
     with open(RUTA_VERSION, "r", encoding="utf-8") as f:
         contenido = f.read()
     match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', contenido)
-    return match.group(1) if match else "0.0.0"
+    return match.group(1) if match else "0.0"
 
 def compilar():
     v_actual = obtener_version_actual()
     v_nueva = incrementar_version(v_actual)
     actualizar_archivo_version(v_nueva)
     
-    nombre_ejecutable = f"Renombrar Escaneos V.{v_nueva}"
+    nombre_ejecutable = f"Renombrar Escaneos MB. {v_nueva}"
     print(f"\n=======================================================")
-    print(f"🚀 Incrementando version a: V.{v_nueva}")
+    print(f"🚀 Incrementando version a: MB. {v_nueva}")
     print(f"📦 Compilando ejecutable: {nombre_ejecutable}.exe")
     print(f"=======================================================\n")
     

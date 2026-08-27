@@ -1,12 +1,51 @@
+# Archivos temporales y de caché de Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.spec
-build/
-dist/
+*.so
+.Python
+
+# Entornos virtuales
 .env
 .venv
 venv/
 ENV/
+env.bak/
+venv.bak/
+
+# Archivos de empaquetado y distribución (¡muy pesados!)
+build/
+dist/
+*.spec
+*.exe
+*.dll
+*.manifest
+
+# Archivos generados por el Sistema Operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Configuraciones de editores de código (IDE)
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Archivos pesados que NUNCA deben subirse
+*.pdf
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Logs y bases de datos locales
+*.log
+*.sqlite3
+*.db
+
+# Directorios de configuraciones temporales de agentes/bots
+.gemini/
