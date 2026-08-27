@@ -3,7 +3,7 @@ import tkinter.messagebox as messagebox
 from tkinter import filedialog
 from models.file_manager import FileManager
 import json
-from config import RUTA_ORIGEN_DEFECTO, DICCIONARIO_SUBMENUS_MAESTRO, CONFIGURACION_SUBMENUS
+from config import DICCIONARIO_SUBMENUS_MAESTRO, CONFIGURACION_SUBMENUS
 
 SETTINGS_FILE = "settings.json"
 
@@ -187,18 +187,8 @@ class AppController:
             messagebox.showwarning("Advertencia", "Los archivos arrastrados no son documentos PDF válidos (.pdf).")
 
     def clasificar_con_subopcion(self, prefijo_boton: str, sub_opcion: str, siglas_map: dict = None):
-        if siglas_map is None:
-            siglas_map = {
-                "Oficio Comision": "OC",
-                "Citatorio": "CT",
-                "Orden": "OR",
-                "Carta de derechos": "CD",
-                "Acta": "AC",
-                "Acuerdo": "ACU",
-                "Informe de Inejecucion": "II"
-            }
-        siglas = siglas_map.get(sub_opcion, sub_opcion)
-        self.clasificar_escaneos(f"{prefijo_boton}_{siglas}")
+        siglas = siglas_map.get(sub_opcion, sub_opcion) if siglas_map else sub_opcion
+        self.clasificar_escaneos(f"{prefijo_boton}-{siglas}")
 
     def clasificar_escaneos(self, clasificacion: str):
         # Solo renombra en sitio
@@ -211,7 +201,7 @@ class AppController:
             return
 
         fecha = self.view.get_fecha_ejecucion()
-        nombre_final = f"{fecha}_{clasificacion}"
+        nombre_final = f"{fecha}-{clasificacion}"
         
         exito, mensaje, nueva_ruta = self.model.renombrar_archivo_en_sitio(nombre_final, self.archivo_activo)
         
@@ -232,7 +222,7 @@ class AppController:
             return
             
         import re
-        patron = r"^\d{4}-\d{2}-\d{2}_.+\.pdf$"
+        patron = r"^\d{4}-\d{2}-\d{2}[-].+\.pdf$"
         
         for ruta in self.archivos_seleccionados:
             nombre = os.path.basename(ruta)
@@ -252,6 +242,9 @@ class AppController:
                 messagebox.showwarning("Enviados con advertencias", f"{reporte}\n\nAdvertencias:\n{errores_txt}")
             else:
                 messagebox.showinfo("Reporte de Envío", reporte)
+            
+            # Resetear los campos del expediente a blanco
+            self.view.entry_expediente.limpiar()
         else:
             messagebox.showerror("Error", reporte)
             

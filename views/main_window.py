@@ -6,6 +6,7 @@ import fitz  # PyMuPDF
 import datetime
 import calendar
 from config import CLASIFICACIONES
+from version import NOMBRE_APP
 from tkinterdnd2 import TkinterDnD, DND_FILES
 
 class Tk(ctk.CTk, TkinterDnD.DnDWrapper):
@@ -335,6 +336,12 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         # Devolver en el formato esperado
         return f"{prefix}/OV/{materia}/{number}/{year}"
 
+    def limpiar(self):
+        # El prefijo (INVEACDMX / INVEADF) se conserva seleccionado
+        self.materia_combo.set("")
+        self.num_var.set("")
+        self.year_combo.set("")
+
 
 class MainWindow(Tk):
     def __init__(self):
@@ -343,7 +350,7 @@ class MainWindow(Tk):
         # Habilitar Drag and Drop para toda la ventana
         self.drop_target_register(DND_FILES)
 
-        self.title("Clasificador de Escaneos")
+        self.title(NOMBRE_APP)
 
         # Configurar tamaño inicial al 80% exacto de la pantalla (ancho y alto), centrado
         screen_w = self.winfo_screenwidth()
@@ -372,7 +379,7 @@ class MainWindow(Tk):
         self.panel_izquierdo.grid_columnconfigure(0, weight=1)
 
         # Expediente
-        ctk.CTkLabel(self.panel_izquierdo, text="Número de Expediente:", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=10, pady=(20, 5), sticky="w")
+        ctk.CTkLabel(self.panel_izquierdo, text="Expediente:", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=10, pady=(20, 5), sticky="w")
         self.entry_expediente = ExpedienteInputFrame(self.panel_izquierdo)
         self.entry_expediente.grid(row=1, column=0, padx=10, pady=(0, 15), sticky="w")
 
@@ -656,9 +663,6 @@ class MainWindow(Tk):
             frame_item.bind("<Button-1>", on_click)
             lbl_icon.bind("<Button-1>", on_click)
             lbl_text.bind("<Button-1>", on_click)
-
-    def actualizar_contador(self, cantidad):
-        self.lbl_contador.configure(text=f"{cantidad} archivos seleccionados")
 
     def mostrar_preview(self, ruta_documento):
         try:

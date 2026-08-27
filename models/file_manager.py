@@ -42,58 +42,70 @@ class FileManager:
             
         return True, ""
 
-    def validar_expediente(self, expediente: str) -> bool:
-        """
-        Valida que el expediente tenga la forma correcta.
-        """
-        valido, _ = self.validar_expediente_detalle(expediente)
-        return valido
-
     def obtener_componentes_expediente(self, expediente: str) -> Tuple[str, str, str, str, str, str]:
         """
         Extrae los componentes del expediente y genera el nombre de la carpeta:
-        (prefix, ov, materia, numero, anio, nombre_carpeta)
+        (prefijo, ov, materia, numero, anio, nombre_carpeta)
         """
         partes = expediente.split('/')
         if len(partes) != 5:
             raise ValueError("Formato de expediente inválido.")
         
-        prefix = partes[0].strip()
+        prefijo = partes[0].strip()
         ov = partes[1].strip()
         materia = partes[2].strip()
         numero = partes[3].strip()
         anio = partes[4].strip()
-        nombre_carpeta = f"{prefix}-{ov}-{materia}-{numero}-{anio}"
-        return prefix, ov, materia, numero, anio, nombre_carpeta
+        nombre_carpeta = f"{prefijo}-{ov}-{materia}-{numero}-{anio}"
+        return prefijo, ov, materia, numero, anio, nombre_carpeta
 
-    def generar_ruta_expediente(self, expediente: str) -> str:
-        r"""
-        Genera la ruta basada en el expediente:
-        INVEACDMX/OV/DU/507/2026 -> [RUTA_BASE]\DU\2026\INVEACDMX-OV-DU-507-2026
+    def calcular_rango_expediente(self, numero: str) -> str:
         """
-        _, _, materia, _, anio, nombre_carpeta = self.obtener_componentes_expediente(expediente)
-        ruta = os.path.join(self.ruta_base, materia, anio, nombre_carpeta)
-        return ruta
+        Calcula el rango numérico de 100 en 100 para el número de expediente:
+        1..100 -> 001-100
+        101..200 -> 101-200
+        507 -> 501-600
+        901..1000 -> 901-1000
+        1001..1100 -> 1001-1100
+        """
+        num = int(numero)
+        inicio = ((num - 1) // 100) * 100 + 1
+        fin = ((num - 1) // 100 + 1) * 100
+        return f"{inicio:03d}-{fin}"
 
     def verificar_y_crear_carpetas(self, expediente: str) -> Tuple[str, List[str]]:
         """
         Verifica paso a paso la existencia de las carpetas:
-        1. Materia
-        2. Año
-        3. Carpeta del Expediente
+        1. Año
+        2. Materia
+        3. Rango (ej. INVEACDMX-OV-DU-501-600)
+        4. Carpeta del Expediente (ej. INVEACDMX-OV-DU-507-2026)
         Crea las que falten y devuelve la ruta destino junto con la lista de carpetas creadas.
         """
-        _, _, materia, _, anio, nombre_carpeta = self.obtener_componentes_expediente(expediente)
+        prefijo, ov, materia, numero, anio, nombre_carpeta = self.obtener_componentes_expediente(expediente)
+        rango_num = self.calcular_rango_expediente(numero)
+        carpeta_rango = f"{prefijo}-{ov}-{materia}-{rango_num}"
         
-        ruta_materia = os.path.join(self.ruta_base, materia)
-        ruta_anio = os.path.join(ruta_materia, anio)
-        ruta_expediente = os.path.join(ruta_anio, nombre_carpeta)
+        # Mapeo de nombres de carpeta de materia
+        if materia == "IO":
+            carpeta_materia = "INSPECCIONES OCULARES"
+        elif materia == "MP":
+            carpeta_materia = "MEDIOS PUBLICITARIOS"
+        else:
+            carpeta_materia = materia
+        
+        ruta_anio = os.path.join(self.ruta_base, anio)
+        ruta_materia = os.path.join(ruta_anio, carpeta_materia)
+        ruta_rango = os.path.join(ruta_materia, carpeta_rango)
+        ruta_expediente = os.path.join(ruta_rango, nombre_carpeta)
         
         carpetas_creadas = []
-        if not os.path.exists(ruta_materia):
-            carpetas_creadas.append("LA CARPETA DE LA MATERIA")
         if not os.path.exists(ruta_anio):
             carpetas_creadas.append("LA CARPETA DEL AÑO")
+        if not os.path.exists(ruta_materia):
+            carpetas_creadas.append("LA CARPETA DE LA MATERIA")
+        if not os.path.exists(ruta_rango):
+            carpetas_creadas.append("LA CARPETA DE RANGO")
         if not os.path.exists(ruta_expediente):
             carpetas_creadas.append("LA CARPETA DEL EXPEDIENTE")
             
@@ -180,6 +192,10 @@ class FileManager:
                 lineas_reporte.append(f"2 CARPETAS CREADAS ({carpetas_creadas[0]} Y {carpetas_creadas[1]})")
             elif num_carpetas == 3:
                 lineas_reporte.append(f"3 CARPETAS CREADAS ({carpetas_creadas[0]}, {carpetas_creadas[1]} Y {carpetas_creadas[2]})")
+            elif num_carpetas == 4:
+                lineas_reporte.append(f"4 CARPETAS CREADAS ({carpetas_creadas[0]}, {carpetas_creadas[1]}, {carpetas_creadas[2]} Y {carpetas_creadas[3]})")
+            else:
+                lineas_reporte.append(f"{num_carpetas} CARPETAS CREADAS ({', '.join(carpetas_creadas[:-1])} Y {carpetas_creadas[-1]})")
 
             reporte_texto = "\n".join(lineas_reporte)
             
@@ -198,9 +214,3 @@ class FileManager:
         except Exception as e:
             return False, f"Error al procesar archivos: {str(e)}", {"archivos_colocados": 0, "carpetas_creadas": [], "errores": [str(e)]}
 
-    def enviar_archivo(self, expediente: str, ruta_archivo: str) -> Tuple[bool, str]:
-        """
-        Compatibilidad para envío de un solo archivo.
-        """
-        exito, reporte, _ = self.enviar_archivos_lote(expediente, [ruta_archivo])
-        return exito, reporte

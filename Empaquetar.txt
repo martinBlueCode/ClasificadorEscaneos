@@ -1,0 +1,16 @@
+CLA
+backgrouns: 8B27F5
+colorText: 390570
+resalte del submenu: DABBFC
+
+Compilar python:
+
+python -m PyInstaller 
+--noconsole --onefile --clean 
+--name "Renombrar Escaneos V.0.1" --hidden-import "customtkinter" 
+--hidden-import "tkinterdnd2" --hidden-import "fitz" --hidden-import "PIL" 
+--collect-all customtkinter --collect-all tkinterdnd2 main.py
+
+Compilar con incremento de versión automático (0.0.0):
+
+python build.py

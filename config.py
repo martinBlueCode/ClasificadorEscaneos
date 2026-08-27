@@ -56,17 +56,17 @@ COLORES_PERSONALIZADOS = {
         "hover": obtener_color_hover("#F52727"),
         "resalte_submenu": "#FCBBBB"
     },
-    "VVC": {
-        "color": "#F5275E",
-        "text_color": "#440315",
-        "hover": obtener_color_hover("#F5275E"),
-        "resalte_submenu": "#FCBBCC"
-    },
     "IMC": {
         "color": "#C527F5",
         "text_color": "#350344",
         "hover": obtener_color_hover("#C527F5"),
         "resalte_submenu": "#EDBBFC"
+    },
+    "VVC": {
+        "color": "#F5275E",
+        "text_color": "#440315",
+        "hover": obtener_color_hover("#F5275E"),
+        "resalte_submenu": "#FCBBCC"
     },
     "CLA": {
         "color": "#8B27F5",
@@ -107,6 +107,7 @@ for i, (nombre, desc) in enumerate(DEFINICION_BOTONES):
 
 # Diccionario maestro con todas las opciones posibles para los submenús y sus siglas
 DICCIONARIO_SUBMENUS_MAESTRO = {
+    # Oficios de comision
     "Oficio Comision": "OC",
     "Oficio Comision +": "NAC-RTS-RPS-OC",    
     
@@ -117,6 +118,7 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     
     "Oficio Comision RTS_IMC": "RTS_IMC-OC",
     
+    # Otros documentos
     "Orden": "OR",
     "Carta de derechos": "CD",
     "Acta": "AC",    
@@ -125,7 +127,12 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Retiro de Sellos": "RTS-AC",
     "Reposicion de Sellos": "RPS-AC",
     "Inspeccion Ocular": "IO-AC",
+    "Razon": "RA",
+    "Acuerdo": "AD",
+    "Citatorio": "CT",
+    "Resolucion": "RE",
 
+    # Notificaciones
     "Notificacion de Acuerdo": "NAC-CE", 
     "Notificacion con Sancion": "NCS-CE",
     "Notificacion sin Sancion": "NSS-CE",  
@@ -139,11 +146,6 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Ct Instructivo de Acuerdo": "NAC-CI", 
     "Ct Instructivo de NCS": "NCS-CI",
     "Ct Instructivo de NSS": "NSS-CI",     
-      
-    "Razon": "RA",
-    "Acuerdo": "AD",
-    "Citatorio": "CT",
-    "Resolucion": "RE",
 
     # Clausura
     "Retiro de Sellos IMC": "RTS_IMC-AC",
@@ -175,6 +177,13 @@ CONFIGURACION_SUBMENUS = {
         "Acta", 
         "Informe de Inejecucion"
     ],
+    "IMC": [
+        "Oficio Comision", 
+        "Orden", 
+        "Acta", 
+        "Acuerdo", 
+        "Retiro de Sellos"
+    ],
     "VVC": [
         "Oficio Comision", 
         "Orden", 
@@ -188,22 +197,13 @@ CONFIGURACION_SUBMENUS = {
         "Reposicion de Sellos", 
         "Informe de Inejecucion"
     ],
-    "IMC": [
-        "Oficio Comision", 
-        "Orden", 
-        "Acta", 
-        "Acuerdo", 
-        "Retiro de Sellos",
-        "Informe de Inejecucion"
-    ],
     "CLA": [
         "Oficio Comision", 
         "Oficio Comision RTS_IMC",
         "Orden", 
         "Acta", 
         "Resolucion", 
-        "Retiro de Sellos IMC",
-        "Informe de Inejecucion"
+        "Retiro de Sellos IMC"
     ],
     "IO": [
         "Oficio Comision", 
