@@ -352,6 +352,22 @@ class MainWindow(Tk):
 
         self.title(NOMBRE_APP)
 
+        # Configurar icono de la ventana si está disponible
+        for posible_icono in ["icono.ico", "app.ico", "icon.ico"]:
+            ruta_posible = os.path.join(os.path.dirname(os.path.dirname(__file__)), posible_icono)
+            if os.path.exists(ruta_posible):
+                try:
+                    self.iconbitmap(ruta_posible)
+                    break
+                except Exception:
+                    pass
+            elif os.path.exists(posible_icono):
+                try:
+                    self.iconbitmap(posible_icono)
+                    break
+                except Exception:
+                    pass
+
         # Configurar tamaño inicial al 80% exacto de la pantalla (ancho y alto), centrado
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
@@ -412,7 +428,7 @@ class MainWindow(Tk):
             self.frame_seleccionado, 
             text="Ninguno", 
             text_color="gray",
-            font=("Arial", 18, "bold")
+            font=("Arial", 17, "bold")
         )
         self.lbl_archivo_activo.pack(side="left")
 
@@ -683,15 +699,27 @@ class MainWindow(Tk):
             lbl_text.pack(side="left", fill="x", expand=True)
             self.widgets_lista.append((frame_item, lbl_icon, lbl_text, ruta_completa))
 
-            # Efectos hover dinámicos
+            # Efectos hover dinámicos unificados para todo el grupo (frame, icono y texto)
             def on_enter(e, f=frame_item):
                 f.configure(fg_color=getattr(f, 'hover_bg', f.cget('fg_color')))
             
             def on_leave(e, f=frame_item):
-                f.configure(fg_color=getattr(f, 'base_fg', f.cget('fg_color')))
+                try:
+                    x, y = f.winfo_pointerxy()
+                    wx = f.winfo_rootx()
+                    wy = f.winfo_rooty()
+                    ww = f.winfo_width()
+                    wh = f.winfo_height()
+                    # Solo remover hover si el cursor realmente salió del área del frame
+                    if not (wx <= x < wx + ww and wy <= y < wy + wh):
+                        f.configure(fg_color=getattr(f, 'base_fg', f.cget('fg_color')))
+                except Exception:
+                    f.configure(fg_color=getattr(f, 'base_fg', f.cget('fg_color')))
                 
             def on_click(e, r=ruta_completa):
-                self.scroll_archivos.after(10, lambda: callback_click(r))
+                is_shift = bool(e.state & 0x0001)
+                is_ctrl = bool(e.state & 0x0004)
+                self.scroll_archivos.after(10, lambda: callback_click(r, is_ctrl=is_ctrl, is_shift=is_shift))
                 
             def on_double_click(e, frame=frame_item, lbl=lbl_text, original_path=ruta_completa, name=nombre_archivo):
                 if not callback_rename: return
@@ -722,14 +750,13 @@ class MainWindow(Tk):
                 entry.bind("<Escape>", cancel_edit)
                 entry.bind("<FocusOut>", cancel_edit)
 
-            frame_item.bind("<Enter>", on_enter)
-            frame_item.bind("<Leave>", on_leave)
+            # Asignar hover y clic a todos los elementos del grupo para evitar parpadeos
+            for widget in (frame_item, lbl_icon, lbl_text):
+                widget.bind("<Enter>", on_enter)
+                widget.bind("<Leave>", on_leave)
+                widget.bind("<Button-1>", on_click)
             
-            frame_item.bind("<Button-1>", on_click)
-            lbl_icon.bind("<Button-1>", on_click)
-            lbl_text.bind("<Button-1>", on_click)
-            
-            # Doble clic sobre el texto
+            # Doble clic sobre el texto para renombrar
             lbl_text.bind("<Double-Button-1>", on_double_click)
 
     def mostrar_preview(self, ruta_documento):

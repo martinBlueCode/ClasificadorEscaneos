@@ -3,6 +3,7 @@ backgrouns: 8B27F5
 colorText: 390570
 resalte del submenu: DABBFC
 
-Para empaquetar el proyecto, incrementar la versión automáticamente y generar el ejecutable directamente en el ESCRITORIO, simplemente ejecuta:
+Para empaquetar el proyecto, incrementar la versión automáticamente 
+y generar el ejecutable directamente en el ESCRITORIO, simplemente ejecuta:
 
 python build.py

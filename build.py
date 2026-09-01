@@ -1,10 +1,17 @@
-import re
+import json
 import subprocess
 import sys
 import os
 
-# Ruta del archivo de versión
-RUTA_VERSION = os.path.join(os.path.dirname(__file__), "version.py")
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
+RUTA_BASE = os.path.dirname(os.path.abspath(__file__))
+RUTA_SETTINGS = os.path.join(RUTA_BASE, "settings.json")
 
 def incrementar_version(version_str: str) -> str:
     """
@@ -14,7 +21,7 @@ def incrementar_version(version_str: str) -> str:
     0.9 -> 1.0
     1.0 -> 1.1
     """
-    partes = version_str.strip().split('.')
+    partes = str(version_str).strip().split('.')
     if len(partes) != 2:
         major, minor = 0, 0
     else:
@@ -30,31 +37,43 @@ def incrementar_version(version_str: str) -> str:
 
     return f"{major}.{minor}"
 
-def actualizar_archivo_version(nueva_version: str):
-    contenido = f'VERSION = "{nueva_version}"\nNOMBRE_APP = f"Renombrar Escaneos MB. {{VERSION}}"\n'
-    with open(RUTA_VERSION, "w", encoding="utf-8") as f:
-        f.write(contenido)
+def obtener_configuracion() -> dict:
+    if os.path.exists(RUTA_SETTINGS):
+        try:
+            with open(RUTA_SETTINGS, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"version": "0.3"}
 
-def obtener_version_actual() -> str:
-    if not os.path.exists(RUTA_VERSION):
-        return "0.0"
-    with open(RUTA_VERSION, "r", encoding="utf-8") as f:
-        contenido = f.read()
-    match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', contenido)
-    return match.group(1) if match else "0.0"
+def guardar_version_en_settings(nueva_version: str):
+    config = obtener_configuracion()
+    config["version"] = nueva_version
+    with open(RUTA_SETTINGS, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
+
+def limpiar_archivos_spec():
+    """Elimina cualquier archivo .spec que haya quedado en la raíz"""
+    for archivo in os.listdir(RUTA_BASE):
+        if archivo.endswith(".spec"):
+            try:
+                os.remove(os.path.join(RUTA_BASE, archivo))
+                print(f"🧹 Eliminado archivo .spec: {archivo}")
+            except Exception:
+                pass
 
 def compilar():
-    v_actual = obtener_version_actual()
+    config = obtener_configuracion()
+    v_actual = config.get("version", "0.3")
     v_nueva = incrementar_version(v_actual)
-    actualizar_archivo_version(v_nueva)
+    guardar_version_en_settings(v_nueva)
     
     nombre_ejecutable = f"Renombrar Escaneos MB. {v_nueva}"
+    
     print(f"\n=======================================================")
-    print(f"🚀 Incrementando version a: MB. {v_nueva}")
+    print(f"🚀 Version actualizada en settings.json: {v_nueva}")
     print(f"📦 Compilando ejecutable: {nombre_ejecutable}.exe")
     print(f"=======================================================\n")
-    
-    import os
     
     # Detectar si usa OneDrive para el escritorio
     escritorio_onedrive = os.path.join(os.environ['USERPROFILE'], 'OneDrive', 'Escritorio')
@@ -63,28 +82,55 @@ def compilar():
     else:
         escritorio = os.path.join(os.environ['USERPROFILE'], 'Desktop')
     
+    # Carpeta build donde se guardarán los archivos temporales de compilación
+    carpeta_build = os.path.join(RUTA_BASE, "build")
+    os.makedirs(carpeta_build, exist_ok=True)
+    
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconsole",
         "--onefile",
         "--clean",
         "--name", nombre_ejecutable,
+        "--specpath", carpeta_build,      # Guarda el .spec dentro de build/
+        "--workpath", carpeta_build,      # Guarda temporales dentro de build/
         "--distpath", escritorio,
         "--hidden-import", "customtkinter",
         "--hidden-import", "tkinterdnd2",
         "--hidden-import", "pymupdf",
         "--hidden-import", "fitz",
         "--hidden-import", "PIL",
+        "--hidden-import", "requests",
         "--collect-all", "customtkinter",
         "--collect-all", "tkinterdnd2",
-        "main.py"
     ]
     
-    res = subprocess.run(cmd)
+    # Si existe un archivo de icono (.ico) en la carpeta, aplicarlo automáticamente
+    posibles_iconos = ["icono.ico", "app.ico", "icon.ico", "logo.ico"]
+    for ico in posibles_iconos:
+        ico_path = os.path.join(RUTA_BASE, ico)
+        if os.path.exists(ico_path):
+            print(f"🎨 Usando icono: {ico}")
+            cmd.extend(["--icon", ico_path])
+            cmd.extend(["--add-data", f"{ico_path};."])
+            break
+            
+    # Añadir settings.json empaquetado
+    if os.path.exists(RUTA_SETTINGS):
+        cmd.extend(["--add-data", f"{RUTA_SETTINGS};."])
+        
+    cmd.append("main.py")
+    
+    res = subprocess.run(cmd, cwd=RUTA_BASE)
+    
+    # Limpieza final: asegurar que no quede ningún .spec en la raíz
+    limpiar_archivos_spec()
+    
     if res.returncode == 0:
         print(f"\n=======================================================")
         print(f"✅ ¡Compilacion exitosa!")
         print(f"📁 Ubicacion: {escritorio}\\{nombre_ejecutable}.exe")
+        print(f"✨ Raiz del proyecto 100% limpia de archivos .spec")
         print(f"=======================================================\n")
     else:
         print(f"\n❌ Error al compilar (codigo {res.returncode})\n")

@@ -53,10 +53,18 @@ class AppController:
         self.view.btn_enviar.configure(command=self.enviar_archivo_destino)
         
         self.ctrl_pressed = False
+        self.shift_pressed = False
+        self.anchor_archivo = None
+
         self.view.bind("<KeyPress-Control_L>", self.on_ctrl_press)
         self.view.bind("<KeyRelease-Control_L>", self.on_ctrl_release)
         self.view.bind("<KeyPress-Control_R>", self.on_ctrl_press)
         self.view.bind("<KeyRelease-Control_R>", self.on_ctrl_release)
+
+        self.view.bind("<KeyPress-Shift_L>", self.on_shift_press)
+        self.view.bind("<KeyRelease-Shift_L>", self.on_shift_release)
+        self.view.bind("<KeyPress-Shift_R>", self.on_shift_press)
+        self.view.bind("<KeyRelease-Shift_R>", self.on_shift_release)
         
         self.view.lbl_ruta_destino.configure(text=f"{self.ruta_carpeta_destino}" if self.ruta_carpeta_destino else "No seleccionado")
         
@@ -96,6 +104,7 @@ class AppController:
             save_settings(self.settings)
             
             self.archivo_activo = None
+            self.anchor_archivo = None
             self.refrescar_carpeta()
 
     def cambiar_destino(self):
@@ -151,8 +160,43 @@ class AppController:
     def on_ctrl_release(self, event):
         self.ctrl_pressed = False
 
-    def seleccionar_archivo(self, ruta_archivo: str):
-        if self.ctrl_pressed:
+    def on_shift_press(self, event):
+        self.shift_pressed = True
+
+    def on_shift_release(self, event):
+        self.shift_pressed = False
+
+    def seleccionar_archivo(self, ruta_archivo: str, is_ctrl: bool = None, is_shift: bool = None):
+        if is_ctrl is None:
+            is_ctrl = self.ctrl_pressed
+        else:
+            is_ctrl = is_ctrl or self.ctrl_pressed
+            
+        if is_shift is None:
+            is_shift = self.shift_pressed
+        else:
+            is_shift = is_shift or self.shift_pressed
+
+        if is_shift:
+            if not self.anchor_archivo or self.anchor_archivo not in self.archivos_en_carpeta:
+                self.anchor_archivo = self.archivo_activo if (self.archivo_activo and self.archivo_activo in self.archivos_en_carpeta) else (self.archivos_en_carpeta[0] if self.archivos_en_carpeta else ruta_archivo)
+            
+            if ruta_archivo in self.archivos_en_carpeta and self.anchor_archivo in self.archivos_en_carpeta:
+                idx_anchor = self.archivos_en_carpeta.index(self.anchor_archivo)
+                idx_target = self.archivos_en_carpeta.index(ruta_archivo)
+                start_idx = min(idx_anchor, idx_target)
+                end_idx = max(idx_anchor, idx_target)
+                rango = self.archivos_en_carpeta[start_idx : end_idx + 1]
+                
+                if is_ctrl:
+                    for f in rango:
+                        if f not in self.archivos_seleccionados:
+                            self.archivos_seleccionados.append(f)
+                else:
+                    self.archivos_seleccionados = list(rango)
+                    
+                self.archivo_activo = ruta_archivo
+        elif is_ctrl:
             if ruta_archivo in self.archivos_seleccionados:
                 self.archivos_seleccionados.remove(ruta_archivo)
                 if self.archivo_activo == ruta_archivo:
@@ -160,9 +204,11 @@ class AppController:
             else:
                 self.archivos_seleccionados.append(ruta_archivo)
                 self.archivo_activo = ruta_archivo
+            self.anchor_archivo = ruta_archivo
         else:
             self.archivo_activo = ruta_archivo
             self.archivos_seleccionados = [ruta_archivo]
+            self.anchor_archivo = ruta_archivo
             
         if self.archivos_seleccionados:
             if len(self.archivos_seleccionados) == 1:
@@ -217,6 +263,9 @@ class AppController:
                 idx = self.archivos_en_carpeta.index(self.archivo_activo)
                 self.archivos_en_carpeta[idx] = nueva_ruta
             
+            if self.anchor_archivo == self.archivo_activo:
+                self.anchor_archivo = nueva_ruta
+
             # Reconstruir la lista visualmente porque el nombre cambió
             self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
             
@@ -265,6 +314,8 @@ class AppController:
         if exito:
             if self.archivo_activo == ruta_archivo:
                 self.archivo_activo = nueva_ruta
+            if self.anchor_archivo == ruta_archivo:
+                self.anchor_archivo = nueva_ruta
                 
             if ruta_archivo in self.archivos_seleccionados:
                 idx = self.archivos_seleccionados.index(ruta_archivo)
@@ -278,6 +329,7 @@ class AppController:
     def limpiar_estado(self):
         self.archivo_activo = None
         self.archivos_seleccionados = []
+        self.anchor_archivo = None
         self.view.lbl_archivo_activo.configure(text="Ninguno", text_color="gray")
         self.view.limpiar_preview()
         self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, None, getattr(self, 'renombrar_manual', None))
