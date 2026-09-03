@@ -472,12 +472,12 @@ class ClickMenu:
                 item_kwargs["activebackground"] = vvc_hover_bg
                 item_kwargs["activeforeground"] = "black"
 
-            # Opciones de IO (primeras 2, 3 a 5, 6 a 9)
+            # Opciones de IO (primeras 2, 3 a 6, 7 en adelante)
             elif btn_text == "IO":
                 if idx < 2:
                     io_bg = "#FDE3AF"
                     io_hover_bg = "#fcd992"
-                elif idx < 5:
+                elif idx < 6:
                     io_bg = "#EAFAC7"
                     io_hover_bg = "#dbf5ad"
                 else:
@@ -501,9 +501,9 @@ class ClickMenu:
                 item_kwargs["activebackground"] = rts_hover_bg
                 item_kwargs["activeforeground"] = "black"
 
-            # Opciones de RE (primeras 6, opciones 7 a 12)
+            # Opciones de RE (primeras 7, opciones 8 en adelante)
             elif btn_text == "RE":
-                if idx < 6:
+                if idx < 7:
                     re_bg = "#AFFDF6"
                     re_hover_bg = "#94fcee"
                 else:
@@ -551,7 +551,8 @@ class ExpedienteInputFrame(ctk.CTkFrame):
             values=["DU", "MP", "IO", "A", "AFO", "DUYUS", "MOBUR"],
             width=88, # Aumentado 15%
             font=("Arial", 14),
-            dropdown_font=("Arial", 14)
+            dropdown_font=("Arial", 14),
+            command=self._on_materia_changed
         )
         self.materia_combo.grid(row=0, column=2, padx=2, sticky="w")
         self.materia_combo.set("DU")  # Valor por defecto
@@ -599,6 +600,14 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.year_combo.grid(row=0, column=6, padx=(2, 0), sticky="w")
         self.year_combo.set("")  # En blanco por defecto
 
+    def _on_materia_changed(self, choice):
+        # Si es IO, bloquear prefijo a INVEACDMX
+        if choice == "IO":
+            self.pref_combo.set("INVEACDMX")
+            self.pref_combo.configure(state="disabled")
+        else:
+            self.pref_combo.configure(state="normal")
+
     def _on_num_write(self, *args):
         val = self.num_var.get()
         # Conservar solo dígitos
@@ -633,6 +642,7 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.materia_combo.set("")
         self.num_var.set("")
         self.year_combo.set("")
+        self.pref_combo.configure(state="normal")
 
 
 class MainWindow(Tk):
@@ -647,15 +657,15 @@ class MainWindow(Tk):
         # Configurar icono de la ventana si está disponible
         for posible_icono in ["icono.ico", "app.ico", "icon.ico"]:
             ruta_posible = os.path.join(os.path.dirname(os.path.dirname(__file__)), posible_icono)
+            if not os.path.exists(ruta_posible) and os.path.exists(posible_icono):
+                ruta_posible = posible_icono
             if os.path.exists(ruta_posible):
                 try:
                     self.iconbitmap(ruta_posible)
-                    break
-                except Exception:
-                    pass
-            elif os.path.exists(posible_icono):
-                try:
-                    self.iconbitmap(posible_icono)
+                    from PIL import Image, ImageTk
+                    pil_ico = Image.open(ruta_posible)
+                    self._window_icon_photo = ImageTk.PhotoImage(pil_ico.resize((48, 48), Image.Resampling.LANCZOS))
+                    self.iconphoto(False, self._window_icon_photo)
                     break
                 except Exception:
                     pass
@@ -680,6 +690,7 @@ class MainWindow(Tk):
         self._crear_panel_izquierdo()
         self._crear_panel_preview()
         self._crear_panel_archivos()
+        self._configurar_navegacion_tab()
         self.clasificaciones = CLASIFICACIONES
 
     def _crear_panel_izquierdo(self):
@@ -687,8 +698,30 @@ class MainWindow(Tk):
         self.panel_izquierdo.grid(row=0, column=0, padx=(20, 10), pady=20, sticky="nsew")
         self.panel_izquierdo.grid_columnconfigure(0, weight=1)
 
-        # Expediente
-        ctk.CTkLabel(self.panel_izquierdo, text="Expediente:", font=("Arial", 14, "bold")).grid(row=0, column=0, padx=10, pady=(20, 5), sticky="w")
+        # Encabezado con Logo (50% más grande) y título de Expediente
+        self.frame_header_izq = ctk.CTkFrame(self.panel_izquierdo, fg_color="transparent")
+        self.frame_header_izq.grid(row=0, column=0, padx=10, pady=(15, 8), sticky="w")
+        
+        try:
+            from PIL import Image
+            ruta_ico = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icono.ico")
+            if not os.path.exists(ruta_ico) and os.path.exists("icono.ico"):
+                ruta_ico = "icono.ico"
+            if os.path.exists(ruta_ico):
+                pil_logo = Image.open(ruta_ico).resize((48, 48), Image.Resampling.LANCZOS)
+                self.ctk_logo = ctk.CTkImage(light_image=pil_logo, dark_image=pil_logo, size=(48, 48))
+                self.lbl_logo_header = ctk.CTkLabel(self.frame_header_izq, image=self.ctk_logo, text="")
+                self.lbl_logo_header.pack(side="left", padx=(0, 10))
+        except Exception:
+            pass
+
+        self.lbl_expediente_title = ctk.CTkLabel(
+            self.frame_header_izq, 
+            text="Expediente:", 
+            font=("Arial", 15, "bold")
+        )
+        self.lbl_expediente_title.pack(side="left", anchor="center")
+
         self.entry_expediente = ExpedienteInputFrame(self.panel_izquierdo)
         self.entry_expediente.grid(row=1, column=0, padx=10, pady=(0, 15), sticky="w")
 
@@ -758,31 +791,48 @@ class MainWindow(Tk):
         )
         self.lbl_archivo_activo.pack(side="left")
 
-        # Clasificaciones (ScrollableFrame para alojar los botones)
+        # Clasificaciones (Marco compacto con altura ajustada a los botones)
         ctk.CTkLabel(self.panel_izquierdo, text="Renombrar:", font=("Arial", 14, "bold")).grid(row=4, column=0, padx=10, pady=(10, 5), sticky="w")
         
-        self.scroll_frame = ctk.CTkScrollableFrame(self.panel_izquierdo)
-        self.scroll_frame.grid(row=5, column=0, padx=10, pady=5, sticky="nsew")
-        self.panel_izquierdo.grid_rowconfigure(5, weight=1)
+        self.frame_botones = ctk.CTkFrame(self.panel_izquierdo, fg_color="transparent")
+        self.frame_botones.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
 
         # Configurar 4 columnas para la retícula
-        self.scroll_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        self.frame_botones.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
         self.botones_clasificacion = []
         for i, clasif in enumerate(CLASIFICACIONES):
             r = i // 4
             c = i % 4
             btn = ctk.CTkButton(
-                self.scroll_frame, 
+                self.frame_botones, 
                 text=clasif["nombre"],
                 font=("Arial", 13, "bold"),
                 fg_color=clasif["color"], 
                 hover_color=clasif["hover"],
                 text_color=clasif.get("text_color", "white"),
-                height=75
+                height=70
             )
             btn.grid(row=r, column=c, padx=4, pady=4, sticky="ew")
             self.botones_clasificacion.append(btn)
+
+        # Sección: Últimos enviados
+        ctk.CTkLabel(
+            self.panel_izquierdo, 
+            text="Últimos enviados:", 
+            font=("Arial", 14, "bold")
+        ).grid(row=6, column=0, padx=10, pady=(15, 5), sticky="w")
+
+        self.scroll_ultimos_enviados = ctk.CTkScrollableFrame(
+            self.panel_izquierdo,
+            fg_color=("gray95", "gray17"),
+            corner_radius=8
+        )
+        self.scroll_ultimos_enviados.grid(row=7, column=0, padx=10, pady=(0, 15), sticky="nsew")
+        self.panel_izquierdo.grid_rowconfigure(7, weight=1)
+
+        self.lista_ultimos_enviados = []
+        self._actualizar_vista_ultimos_enviados()
 
     def abrir_calendario(self):
         CTkCalendarPopup(self, self.fecha_ejecucion, self.actualizar_fecha, anchor_widget=self.btn_fecha, theme="blue")
@@ -811,6 +861,132 @@ class MainWindow(Tk):
         if self.fecha_resolucion:
             return self.fecha_resolucion.strftime("%Y-%m-%d")
         return ""
+
+    def agregar_ultimo_enviado(self, expediente: str):
+        if not expediente:
+            return
+        # Insertar al inicio (posición 1) para que el más reciente quede arriba
+        self.lista_ultimos_enviados.insert(0, expediente)
+        self._actualizar_vista_ultimos_enviados()
+
+    def _actualizar_vista_ultimos_enviados(self):
+        for widget in self.scroll_ultimos_enviados.winfo_children():
+            widget.destroy()
+
+        if not self.lista_ultimos_enviados:
+            lbl_empty = ctk.CTkLabel(
+                self.scroll_ultimos_enviados,
+                text="Aún no se han enviado expedientes",
+                font=("Arial", 12, "italic"),
+                text_color="gray50"
+            )
+            lbl_empty.pack(padx=10, pady=10, anchor="w")
+            return
+
+        for idx, exp in enumerate(self.lista_ultimos_enviados, start=1):
+            row_frame = ctk.CTkFrame(self.scroll_ultimos_enviados, fg_color="transparent")
+            row_frame.pack(fill="x", padx=5, pady=2, anchor="w")
+
+            lbl_num = ctk.CTkLabel(
+                row_frame,
+                text=f"{idx}.",
+                font=("Arial", 13, "bold"),
+                width=24,
+                anchor="w",
+                text_color=("#1f538d", "#38bdf8")
+            )
+            lbl_num.pack(side="left")
+
+            lbl_exp = ctk.CTkLabel(
+                row_frame,
+                text=exp,
+                font=("Arial", 13, "bold" if idx == 1 else "normal"),
+                text_color=("black", "white") if idx == 1 else ("gray20", "gray80"),
+                anchor="w"
+            )
+            lbl_exp.pack(side="left", padx=(2, 0))
+
+    def _configurar_navegacion_tab(self):
+        """Configura el orden de foco con la tecla Tab y resalta con contorno negro el input activo"""
+        widgets = [
+            self.entry_expediente.pref_combo,
+            self.entry_expediente.materia_combo,
+            self.entry_expediente.num_entry,
+            self.entry_expediente.year_combo,
+            self.btn_fecha,
+            self.btn_fecha_resolucion
+        ]
+
+        def on_focus_in(w):
+            try:
+                if isinstance(w, ctk.CTkEntry):
+                    w.configure(border_color="#000000", border_width=2)
+                elif hasattr(w, "_canvas") and w._canvas:
+                    w._canvas.configure(highlightthickness=2, highlightbackground="#000000", highlightcolor="#000000")
+            except Exception:
+                pass
+
+        def on_focus_out(w):
+            try:
+                if isinstance(w, ctk.CTkEntry):
+                    w.configure(border_color=("gray70", "gray40"), border_width=1)
+                elif hasattr(w, "_canvas") and w._canvas:
+                    w._canvas.configure(highlightthickness=0)
+            except Exception:
+                pass
+
+        def focus_widget(w):
+            try:
+                if isinstance(w, ctk.CTkEntry):
+                    w.focus_set()
+                    if hasattr(w, '_entry') and w._entry:
+                        w._entry.focus_set()
+                        w._entry.select_range(0, 'end')
+                        w._entry.icursor('end')
+                else:
+                    w.focus_set()
+            except Exception:
+                pass
+
+        for i, w in enumerate(widgets):
+            next_w = widgets[(i + 1) % len(widgets)]
+            prev_w = widgets[(i - 1) % len(widgets)]
+
+            def make_tab_handler(nxt):
+                return lambda e: (focus_widget(nxt), "break")[1]
+
+            def make_shift_tab_handler(prv):
+                return lambda e: (focus_widget(prv), "break")[1]
+
+            h_tab = make_tab_handler(next_w)
+            h_shift_tab = make_shift_tab_handler(prev_w)
+
+            w.bind("<Tab>", h_tab, add="+")
+            w.bind("<Shift-Tab>", h_shift_tab, add="+")
+            w.bind("<ISO_Left_Tab>", h_shift_tab, add="+")
+            w.bind("<FocusIn>", lambda e, target=w: on_focus_in(target), add="+")
+            w.bind("<FocusOut>", lambda e, target=w: on_focus_out(target), add="+")
+
+            if hasattr(w, "_entry") and w._entry:
+                w._entry.bind("<Tab>", h_tab, add="+")
+                w._entry.bind("<Shift-Tab>", h_shift_tab, add="+")
+                w._entry.bind("<ISO_Left_Tab>", h_shift_tab, add="+")
+                w._entry.bind("<FocusIn>", lambda e, target=w: on_focus_in(target), add="+")
+                w._entry.bind("<FocusOut>", lambda e, target=w: on_focus_out(target), add="+")
+            if hasattr(w, "_canvas") and w._canvas:
+                w._canvas.bind("<Tab>", h_tab, add="+")
+                w._canvas.bind("<Shift-Tab>", h_shift_tab, add="+")
+                w._canvas.bind("<ISO_Left_Tab>", h_shift_tab, add="+")
+                w._canvas.bind("<FocusIn>", lambda e, target=w: on_focus_in(target), add="+")
+                w._canvas.bind("<FocusOut>", lambda e, target=w: on_focus_out(target), add="+")
+
+            # Permitir activar botones / abrir menús con Espacio o Enter
+            if isinstance(w, ctk.CTkButton):
+                w.bind("<Return>", lambda e, btn=w: (btn._command(), "break")[1], add="+")
+                w.bind("<space>", lambda e, btn=w: (btn._command(), "break")[1], add="+")
+            elif isinstance(w, ctk.CTkOptionMenu):
+                w.bind("<Return>", lambda e, om=w: (om._open_dropdown_menu(), "break")[1], add="+")
+                w.bind("<space>", lambda e, om=w: (om._open_dropdown_menu(), "break")[1], add="+")
 
     def _crear_panel_preview(self):
         self.panel_preview = ctk.CTkFrame(self)
@@ -991,14 +1167,11 @@ class MainWindow(Tk):
         if not hasattr(self, 'widgets_lista'):
             self.widgets_lista = []
             
-        # Limpiar lista anterior
-        for item in self.widgets_lista:
+        # Limpiar completamente todo el contenido anterior del contenedor de archivos
+        for child in self.scroll_archivos.winfo_children():
             try:
-                if isinstance(item, tuple):
-                    item[0].destroy()
-                else:
-                    item.destroy()
-            except:
+                child.destroy()
+            except Exception:
                 pass
         self.widgets_lista.clear()
 
@@ -1007,6 +1180,7 @@ class MainWindow(Tk):
         if not lista_archivos:
             lbl_vacio = ctk.CTkLabel(self.scroll_archivos, text="No hay archivos PDF en la carpeta", text_color="gray")
             lbl_vacio.pack(pady=30)
+            self.widgets_lista.append(lbl_vacio)
             return
 
         is_light = ctk.get_appearance_mode() == "Light"

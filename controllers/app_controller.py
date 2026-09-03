@@ -389,6 +389,9 @@ class AppController:
         
         exito, reporte, stats = self.model.enviar_archivos_lote(expediente, self.archivos_seleccionados)
         if exito:
+            # Registrar en la lista de Últimos enviados
+            self.view.agregar_ultimo_enviado(expediente)
+
             if stats.get("errores"):
                 errores_txt = "\n".join(stats["errores"])
                 messagebox.showwarning("Enviados con advertencias", f"{reporte}\n\nAdvertencias:\n{errores_txt}")

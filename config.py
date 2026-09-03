@@ -148,6 +148,7 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
 
     # Clausura
     "Retiro de Sellos IMC": "RTS_IMC-AC",
+    "Cedula notificacion": "NCS-CE", 
 
     # Inspecciones
     "Oficio Comision S/Exp": "OC",
@@ -181,7 +182,7 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Citatorio NCS/CT": "NCS-CT",
     "Citatorio instructivo NCS/CI": "NCS-CI",    
     "Instructivo NCS/IN": "NCS-IN",
-
+    "Cedula NCS/CE": 
     "Resolucion NSS/RE": "NSS",
     "Razon NSS/RA": "NSS-RA",
     "Citatorio NSS/CT": "NSS-CT",
@@ -223,9 +224,10 @@ CONFIGURACION_SUBMENUS = {
     "CLA": [
         "Oficio Comision", 
         "Oficio Comision RTS_IMC",
+        "Resolucion", 
+        "Cedula notificacion",
         "Orden", 
         "Acta", 
-        "Resolucion", 
         "Retiro de Sellos IMC"
     ],
     "IO": [
