@@ -118,6 +118,11 @@ def compilar():
     # Añadir settings.json empaquetado
     if os.path.exists(RUTA_SETTINGS):
         cmd.extend(["--add-data", f"{RUTA_SETTINGS};."])
+
+    # Añadir carpeta resources si existe
+    ruta_resources = os.path.join(RUTA_BASE, "resources")
+    if os.path.exists(ruta_resources):
+        cmd.extend(["--add-data", f"{ruta_resources};resources"])
         
     cmd.append("main.py")
     

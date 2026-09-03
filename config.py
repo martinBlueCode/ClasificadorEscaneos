@@ -37,15 +37,10 @@ DEFINICION_BOTONES = [
     ("CLA", "Clausura"),
     ("IO", "Inspecciones Oculares"),
     ("RTS", "Retiro de sellos"),
-    # ("RPS", "Reposicion de sellos"),
-    # ("NCS", "Notificacion con sancion"),
-    # ("NSS", "Notificacion sin sancion"),
-    # ("NAC", "Notificacion de acuerdo"),
-    # ("RT-MP", "Retiro de medio publicitario"),
-    # ("RT-A", "Retiro de anuncio"),
-    # ("DEV-MP", "Devolucion de medio publicitario"),
-    # ("DEV-A", "Devolucion de anuncio"),
-    # ("DEV-\nMOBUR", "Devolucion de mobiliario urbano")
+    #NOTIFICACIONES CON CALENDARIO RESOLUCION Y ACUERDO
+    ("AD", "Acuerdos"),
+    ("RE", "Resoluciones"),
+    
 ]
 
 # Colores personalizados definidos por el usuario
@@ -109,21 +104,24 @@ for i, (nombre, desc) in enumerate(DEFINICION_BOTONES):
 DICCIONARIO_SUBMENUS_MAESTRO = {
     # Oficios de comision
     "Oficio Comision": "OC",
-    "Oficio Comision +": "NAC-RTS-RPS-OC",    
+    "Oficio Comision (Combo)": "NAC-RTS-RPS-OC",    
     
     "Oficio Comision RPS/IMC": "RPS-IMC-OC",
     "Oficio Comision RPS/CLA": "RPS-CLA-OC",
+
     "Oficio Comision RTS/IMC": "IMC-OC",
-    "Oficio Comision RTS/CLA": "CLA-OC",
-    
+    "Oficio Comision RTS/CLA": "CLA-OC",    
     "Oficio Comision RTS_IMC": "RTS_IMC-OC",
+
+    "Oficio Comision NAC/AD": "NAC-OC",
+    "Oficio Comision NCS/RE": "NCS-OC",
+    "Oficio Comision NSS/RE": "NSS-OC",
     
     # Otros documentos
     "Orden": "OR",
     "Carta de derechos": "CD",
     "Acta": "AC",    
     "Informe de Inejecucion": "II",
-
     "Retiro de Sellos": "RTS-AC",
     "Reposicion de Sellos": "RPS-AC",
     "Inspeccion Ocular": "IO-AC",
@@ -131,9 +129,10 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Acuerdo": "AD",
     "Citatorio": "CT",
     "Resolucion": "RE",
+    "Acuerdo NAC/AD": "NAC",
 
     # Notificaciones
-    "Notificacion de Acuerdo": "NAC-CE", 
+    "Cedula de Acuerdo": "NAC-CE", 
     "Notificacion con Sancion": "NCS-CE",
     "Notificacion sin Sancion": "NSS-CE",  
     "Citatorio de Acuerdo": "NAC-CT", 
@@ -151,12 +150,16 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Retiro de Sellos IMC": "RTS_IMC-AC",
 
     # Inspecciones
+    "Oficio Comision S/Exp": "OC",
+    "Acta S/Exp": "AC",
     "Acta IO/IMC": "IMC-AC",
     "Acta IO/CLA": "CLA-AC",
     "Acta RPS/IMC": "RPS-IMC-AC",
     "Acta RPS/CLA": "RPS-CLA-AC",
     "Acta Acuerdo/IMC": "RPS-IMC-AD",
     "Acta Acuerdo/CLA": "RPS-CLA-AD",
+    "Acuerdo IMC": "IMC-AD",
+    "Acuerdo CLA": "CLA-AD",
 
     # Retiros
     "Acta RTS/IMC": "IMC-AC",
@@ -166,6 +169,24 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Acuerdo/RTS/IMC": "IMC-AD",
     "Acuerdo/RTS/CLA": "CLA-AD",
     "Cedula NAC/CE": "NAC-CE",
+    
+    "Razon NAC/RA": "NAC-RA",
+    "Citatorio NAC/CT": "NAC-CT",
+    "Citatorio instructivo NAC/CI": "NAC-CI",    
+    "Instructivo NAC/IN": "NAC-IN",
+
+    # Resoluciones
+    "Resolucion NCS/RE": "NCS",
+    "Razon NCS/RA": "NCS-RA",
+    "Citatorio NCS/CT": "NCS-CT",
+    "Citatorio instructivo NCS/CI": "NCS-CI",    
+    "Instructivo NCS/IN": "NCS-IN",
+
+    "Resolucion NSS/RE": "NSS",
+    "Razon NSS/RA": "NSS-RA",
+    "Citatorio NSS/CT": "NSS-CT",
+    "Citatorio instructivo NSS/CI": "NSS-CI",    
+    "Instructivo NSS/IN": "NSS-IN"
     
 }
 
@@ -192,8 +213,8 @@ CONFIGURACION_SUBMENUS = {
         "Acta", 
         "Carta de derechos", 
         "Citatorio", 
-        "Oficio Comision +",
-        "Notificacion de Acuerdo",
+        "Oficio Comision (Combo)",
+        "Cedula de Acuerdo",
         "Citatorio de Acuerdo",
         "Retiro de Sellos", 
         "Reposicion de Sellos", 
@@ -208,23 +229,57 @@ CONFIGURACION_SUBMENUS = {
         "Retiro de Sellos IMC"
     ],
     "IO": [
-        "Oficio Comision", 
+        "Oficio Comision S/Exp", 
+        "Acta S/Exp",         
         "Oficio Comision RPS/IMC",
-        "Oficio Comision RPS/CLA",
-        "Acta",         
-        "Acuerdo", 
-        "Acta RPS/IMC",
-        "Acta RPS/CLA",
         "Acta IO/IMC",
-        "Acta IO/CLA"        
+        "Acta RPS/IMC",
+        "Acuerdo IMC",
+        "Oficio Comision RPS/CLA",
+        "Acta IO/CLA",        
+        "Acta RPS/CLA",
+        "Acuerdo CLA" 
     ],
     "RTS": [        
         "Oficio Comision RTS/IMC",
-        "Oficio Comision RTS/CLA",        
-        "Cedula NAC/CE",
-        "Acuerdo/RTS/IMC", 
-        "Acuerdo/RTS/CLA",
         "Acta RTS/IMC",
-        "Acta RTS/CLA"        
-    ]
+        "Acuerdo/RTS/IMC", 
+        "Cedula NAC/CE",
+        "Oficio Comision RTS/CLA",        
+        "Acta RTS/CLA",
+        "Acuerdo/RTS/CLA",        
+        "Cedula NAC/CE",    
+        "Razon NAC/RA",    
+        "Citatorio NAC/CT",    
+        "Citatorio instructivo NAC/CI",
+        "Instructivo NAC/IN" 
+    ],
+    "AD": [
+        "Oficio Comision NAC/AD",
+        "Acuerdo NAC/AD",
+        "Razon NAC/RA",
+        "Citatorio NAC/CT",
+        "Citatorio instructivo NAC/CI",
+        "Cedula NAC/CE",
+        "Instructivo NAC/IN"
+    ],
+    "RE": [
+        "Oficio Comision NCS/RE",
+        "Resolucion NCS/RE",
+        "Razon NCS/RA",
+        "Citatorio NCS/CT",
+        "Citatorio instructivo NCS/CI",
+        "Cedula NCS/CE",
+        "Instructivo NCS/IN",
+        #Notificaciones sin sancion
+        "Oficio Comision NSS/RE",
+        "Resolucion NSS/RE",
+        "Razon NSS/RA",
+        "Citatorio NSS/CT",
+        "Citatorio instructivo NSS/CI",
+        "Cedula NSS/CE",
+        "Instructivo NSS/IN"
+    ],
 }
+
+

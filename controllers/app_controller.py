@@ -142,7 +142,13 @@ class AppController:
                 messagebox.showerror("Error", f"No se pudo leer la carpeta:\n{str(e)}")
 
         # Forzar reconstrucción visual de la lista
-        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
+        self.view.mostrar_lista_archivos(
+            self.archivos_en_carpeta,
+            self.seleccionar_archivo,
+            self.archivos_seleccionados,
+            getattr(self, 'renombrar_manual', None),
+            getattr(self, 'eliminar_archivo', None)
+        )
 
         # Si el archivo activo ya no existe o no hay ninguno, seleccionar el primero disponible
         if self.archivos_en_carpeta:
@@ -152,7 +158,13 @@ class AppController:
                 self.seleccionar_archivo(self.archivo_activo)
         else:
             self.limpiar_estado()
-            self.view.mostrar_lista_archivos([], self.seleccionar_archivo, None, getattr(self, 'renombrar_manual', None))
+            self.view.mostrar_lista_archivos(
+                [],
+                self.seleccionar_archivo,
+                None,
+                getattr(self, 'renombrar_manual', None),
+                getattr(self, 'eliminar_archivo', None)
+            )
 
     def on_ctrl_press(self, event):
         self.ctrl_pressed = True
@@ -227,7 +239,13 @@ class AppController:
         if hasattr(self.view, 'actualizar_seleccion'):
             self.view.actualizar_seleccion(self.archivos_seleccionados)
         else:
-            self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
+            self.view.mostrar_lista_archivos(
+                self.archivos_en_carpeta,
+                self.seleccionar_archivo,
+                self.archivos_seleccionados,
+                getattr(self, 'renombrar_manual', None),
+                getattr(self, 'eliminar_archivo', None)
+            )
 
     def cargar_escaneos_dnd(self, event):
         archivos = self.view.tk.splitlist(event.data)
@@ -238,9 +256,79 @@ class AppController:
         else:
             messagebox.showwarning("Advertencia", "Los archivos arrastrados no son documentos PDF válidos (.pdf).")
 
+    def es_opcion_resolucion_acuerdo(self, prefijo_boton: str, sub_opcion: str) -> bool:
+        """Determina si la opción seleccionada requiere obligatoriamente fecha de Resolución / Acuerdo"""
+        if prefijo_boton == "AD" and sub_opcion in ["Acuerdo NAC/AC", "Acuerdo NAC/AD"]:
+            return True
+        if prefijo_boton == "RE" and sub_opcion in ["Resolucion NCS/RE", "Resolucion NSS/RE"]:
+            return True
+        if prefijo_boton == "CLA" and sub_opcion == "Resolucion":
+            return True
+        return False
+
     def clasificar_con_subopcion(self, prefijo_boton: str, sub_opcion: str, siglas_map: dict = None):
+        # Solo renombra en sitio
+        if not self.archivos_seleccionados:
+            messagebox.showwarning("Atención", "Por favor selecciona un archivo de la lista para renombrar.")
+            return
+            
+        if len(self.archivos_seleccionados) > 1:
+            messagebox.showwarning("Atención", "Selecciona solo 1 archivo para renombrar.")
+            return
+
+        requiere_fecha_res = self.es_opcion_resolucion_acuerdo(prefijo_boton, sub_opcion)
+        fecha_res = self.view.get_fecha_resolucion()
+
+        # Validación obligatoria personalizada de fecha de resolución / acuerdo
+        if requiere_fecha_res and not fecha_res:
+            if prefijo_boton == "CLA":
+                msg = "Ingresa fecha de resolucion de CLAUSURA antes de renombrar."
+            elif prefijo_boton == "AD":
+                msg = "Ingresa fecha de ACUERDO antes de renombrar."
+            elif prefijo_boton == "RE":
+                msg = "Ingresa fecha de RESOLUCION antes de renombrar."
+            else:
+                msg = "Ingresa la Fecha de Resolución / Acuerdo antes de renombrar."
+            messagebox.showwarning("Atención", msg)
+            return
+
         siglas = siglas_map.get(sub_opcion, sub_opcion) if siglas_map else sub_opcion
-        self.clasificar_escaneos(f"{prefijo_boton}-{siglas}")
+        fecha_ejec = self.view.get_fecha_ejecucion()
+
+        # Solo para las opciones indicadas se añade la fecha al final con guión
+        if requiere_fecha_res and fecha_res:
+            nombre_final = f"{fecha_ejec}-{prefijo_boton}-{siglas}-{fecha_res}"
+        else:
+            nombre_final = f"{fecha_ejec}-{prefijo_boton}-{siglas}"
+
+        exito, mensaje, nueva_ruta = self.model.renombrar_archivo_en_sitio(nombre_final, self.archivo_activo)
+        
+        if exito:
+            # Si fue una opción con fecha de resolución, resetear a "YYYY-mm-dd"
+            if requiere_fecha_res:
+                self.view.limpiar_fecha_resolucion()
+
+            # Actualizar la lista en memoria
+            if self.archivo_activo in self.archivos_en_carpeta:
+                idx = self.archivos_en_carpeta.index(self.archivo_activo)
+                self.archivos_en_carpeta[idx] = nueva_ruta
+            
+            if self.anchor_archivo == self.archivo_activo:
+                self.anchor_archivo = nueva_ruta
+
+            # Reconstruir la lista visualmente porque el nombre cambió
+            self.view.mostrar_lista_archivos(
+                self.archivos_en_carpeta,
+                self.seleccionar_archivo,
+                self.archivos_seleccionados,
+                getattr(self, 'renombrar_manual', None),
+                getattr(self, 'eliminar_archivo', None)
+            )
+            
+            # Mantener seleccionado
+            self.seleccionar_archivo(nueva_ruta)
+        else:
+            messagebox.showerror("Error", mensaje)
 
     def clasificar_escaneos(self, clasificacion: str):
         # Solo renombra en sitio
@@ -267,7 +355,13 @@ class AppController:
                 self.anchor_archivo = nueva_ruta
 
             # Reconstruir la lista visualmente porque el nombre cambió
-            self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, self.archivos_seleccionados, getattr(self, 'renombrar_manual', None))
+            self.view.mostrar_lista_archivos(
+                self.archivos_en_carpeta,
+                self.seleccionar_archivo,
+                self.archivos_seleccionados,
+                getattr(self, 'renombrar_manual', None),
+                getattr(self, 'eliminar_archivo', None)
+            )
             
             # Mantener seleccionado
             self.seleccionar_archivo(nueva_ruta)
@@ -326,10 +420,30 @@ class AppController:
             messagebox.showerror("Error al renombrar", mensaje)
             self.refrescar_carpeta()
 
+    def eliminar_archivo(self, ruta_archivo: str):
+        exito, mensaje = self.model.enviar_a_papelera(ruta_archivo)
+        if exito:
+            if self.archivo_activo == ruta_archivo:
+                self.archivo_activo = None
+            if self.anchor_archivo == ruta_archivo:
+                self.anchor_archivo = None
+            if ruta_archivo in self.archivos_seleccionados:
+                self.archivos_seleccionados.remove(ruta_archivo)
+                
+            self.refrescar_carpeta()
+        else:
+            messagebox.showerror("Error al eliminar", mensaje)
+
     def limpiar_estado(self):
         self.archivo_activo = None
         self.archivos_seleccionados = []
         self.anchor_archivo = None
         self.view.lbl_archivo_activo.configure(text="Ninguno", text_color="gray")
         self.view.limpiar_preview()
-        self.view.mostrar_lista_archivos(self.archivos_en_carpeta, self.seleccionar_archivo, None, getattr(self, 'renombrar_manual', None))
+        self.view.mostrar_lista_archivos(
+            self.archivos_en_carpeta,
+            self.seleccionar_archivo,
+            None,
+            getattr(self, 'renombrar_manual', None),
+            getattr(self, 'eliminar_archivo', None)
+        )

@@ -1,13 +1,46 @@
 import customtkinter as ctk
 import tkinter as tk
-from PIL import Image
+from PIL import Image, ImageTk
 import os
+import sys
 import fitz  # PyMuPDF
 import datetime
 import calendar
 from config import CLASIFICACIONES
 from version import NOMBRE_APP
 from tkinterdnd2 import TkinterDnD, DND_FILES
+
+_CACHE_CTK_DELETE_ICON = None
+
+def obtener_icono_delete_ctk(size=(24, 24)):
+    global _CACHE_CTK_DELETE_ICON
+    if _CACHE_CTK_DELETE_ICON is not None:
+        return _CACHE_CTK_DELETE_ICON
+        
+    posibles_rutas = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "delete-svg.svg"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources", "delete-svg.svg"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "delete-svg.svg"),
+        os.path.join(os.getcwd(), "resources", "delete-svg.svg"),
+        r"c:\Users\LmartinezN\Documents\CAMBIOS_SISTEMA\ClasificadorEscaneos\resources\delete-svg.svg",
+        r"c:\Users\LmartinezN\Documents\BlueCore-Pandora\resources\delete-svg.svg",
+    ]
+    if hasattr(sys, '_MEIPASS'):
+        posibles_rutas.insert(0, os.path.join(sys._MEIPASS, "resources", "delete-svg.svg"))
+        posibles_rutas.insert(0, os.path.join(sys._MEIPASS, "delete-svg.svg"))
+
+    for ruta in posibles_rutas:
+        if ruta and os.path.exists(ruta):
+            try:
+                doc = fitz.open(ruta)
+                pix = doc[0].get_pixmap(dpi=300, alpha=True)
+                img = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
+                doc.close()
+                _CACHE_CTK_DELETE_ICON = ctk.CTkImage(light_image=img, dark_image=img, size=size)
+                return _CACHE_CTK_DELETE_ICON
+            except Exception:
+                pass
+    return None
 
 class Tk(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(self, *args, **kwargs):
@@ -75,44 +108,189 @@ class ToolTip:
             self.tooltip_window = None
 
 
+class CTkConfirmDeleteDialog(ctk.CTkToplevel):
+    def __init__(self, master, filename: str, on_confirm_callback):
+        super().__init__(master)
+        self.title("Confirmar eliminación")
+        self.on_confirm_callback = on_confirm_callback
+        
+        self.resizable(False, False)
+        self.transient(master)
+        
+        # Frame contenedor
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=25, pady=25)
+        
+        # Texto superior
+        lbl_msg = ctk.CTkLabel(
+            main_frame,
+            text="Se eliminará el archivo:",
+            font=("Arial", 15),
+            text_color=("gray25", "gray80")
+        )
+        lbl_msg.pack(pady=(0, 10))
+        
+        # Nombre de archivo en grande
+        lbl_filename = ctk.CTkLabel(
+            main_frame,
+            text=filename,
+            font=("Arial", 17, "bold"),
+            text_color=("#dc2626", "#f87171"),
+            wraplength=420,
+            justify="center"
+        )
+        lbl_filename.pack(pady=(0, 25))
+        
+        # Frame para botones Aceptar / Cancelar
+        btn_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=(5, 0))
+        
+        # Botón Aceptar (rojo)
+        self.btn_aceptar = ctk.CTkButton(
+            btn_frame,
+            text="Aceptar",
+            fg_color="#dc2626",
+            hover_color="#b91c1c",
+            text_color="white",
+            font=("Arial", 14, "bold"),
+            height=38,
+            width=130,
+            command=self._on_aceptar
+        )
+        self.btn_aceptar.pack(side="left", expand=True, padx=(0, 10))
+        
+        # Botón Cancelar (azul)
+        self.btn_cancelar = ctk.CTkButton(
+            btn_frame,
+            text="Cancelar",
+            fg_color="#2563eb",
+            hover_color="#1d4ed8",
+            text_color="white",
+            font=("Arial", 14, "bold"),
+            height=38,
+            width=130,
+            command=self._on_cancelar
+        )
+        self.btn_cancelar.pack(side="right", expand=True, padx=(10, 0))
+        
+        # Atajos de teclado
+        self.bind("<Escape>", lambda e: self._on_cancelar())
+        self.bind("<Return>", lambda e: self._on_aceptar())
+        
+        # Calcular posición centrada sobre la ventana principal
+        self.update_idletasks()
+        w = max(460, self.winfo_reqwidth())
+        h = max(190, self.winfo_reqheight())
+        try:
+            x = master.winfo_rootx() + (master.winfo_width() // 2) - (w // 2)
+            y = master.winfo_rooty() + (master.winfo_height() // 2) - (h // 2)
+            self.geometry(f"{w}x{h}+{max(0, x)}+{max(0, y)}")
+        except Exception:
+            self.geometry(f"{w}x{h}")
+            
+        self.grab_set()
+        self.btn_cancelar.focus()
+
+    def _on_aceptar(self):
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
+        if self.on_confirm_callback:
+            self.on_confirm_callback()
+
+    def _on_cancelar(self):
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
+
+
 class CTkCalendarPopup(ctk.CTkToplevel):
-    def __init__(self, master, current_date, callback, x=None, y=None):
+    def __init__(self, master, current_date, callback, anchor_widget=None, x=None, y=None, theme="blue", allow_clear=False):
         super().__init__(master)
         self.title("Seleccionar Fecha")
-        if x is not None and y is not None:
-            self.geometry(f"300x320+{x}+{y}")
+        
+        is_orange = (theme == "orange")
+        is_light = ctk.get_appearance_mode() == "Light"
+        self.allow_clear = allow_clear or is_orange
+        self.anchor_widget = anchor_widget
+        
+        self.h_win = 365 if self.allow_clear else 320
+        if anchor_widget and anchor_widget.winfo_exists():
+            x = anchor_widget.winfo_rootx()
+            y = anchor_widget.winfo_rooty() + anchor_widget.winfo_height() + 5
+            self.geometry(f"300x{self.h_win}+{x}+{y}")
+        elif x is not None and y is not None:
+            self.geometry(f"300x{self.h_win}+{x}+{y}")
         else:
-            self.geometry("300x320")
+            self.geometry(f"300x{self.h_win}")
+            
         self.resizable(False, False)
         self.transient(master)  # Vínculo a ventana principal
         self.grab_set()         # Bloquear interacción con ventana principal
         
         self.callback = callback
         self.selected_date = current_date
-        self.year = current_date.year
-        self.month = current_date.month
+        self.year = current_date.year if current_date else datetime.date.today().year
+        self.month = current_date.month if current_date else datetime.date.today().month
+        self.theme = theme
         
+        self.primary_color = "#ea580c" if is_orange else "#1f538d"
+        self.primary_hover = "#c2410c" if is_orange else "#14375e"
+        
+        if is_orange:
+            bg_top = "#fff7ed" if is_light else "#2a1205"
+            self.configure(fg_color=bg_top)
+            
         # Header: Navegación de mes
         self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.header_frame.pack(fill="x", padx=10, pady=10)
         
-        self.btn_prev = ctk.CTkButton(self.header_frame, text="<", width=30, command=self.prev_month)
+        self.btn_prev = ctk.CTkButton(
+            self.header_frame, 
+            text="<", 
+            width=30, 
+            fg_color=self.primary_color,
+            hover_color=self.primary_hover,
+            command=self.prev_month
+        )
         self.btn_prev.pack(side="left")
         
-        self.lbl_month = ctk.CTkLabel(self.header_frame, text="", font=("Arial", 14, "bold"))
+        month_txt_color = "#9a3412" if (is_orange and is_light) else ("#fdba74" if is_orange else None)
+        self.lbl_month = ctk.CTkLabel(
+            self.header_frame, 
+            text="", 
+            font=("Arial", 14, "bold"),
+            text_color=month_txt_color if month_txt_color else ("black" if is_light else "white")
+        )
         self.lbl_month.pack(side="left", expand=True)
         
-        self.btn_next = ctk.CTkButton(self.header_frame, text=">", width=30, command=self.next_month)
+        self.btn_next = ctk.CTkButton(
+            self.header_frame, 
+            text=">", 
+            width=30, 
+            fg_color=self.primary_color,
+            hover_color=self.primary_hover,
+            command=self.next_month
+        )
         self.btn_next.pack(side="right")
         
-        # Grid de días
-        self.days_frame = ctk.CTkFrame(self)
+        # Grid de días con fondo naranja si es temática naranja
+        days_bg = "#ffedd5" if (is_orange and is_light) else ("#3b1708" if is_orange else None)
+        if days_bg:
+            self.days_frame = ctk.CTkFrame(self, fg_color=days_bg, corner_radius=8)
+        else:
+            self.days_frame = ctk.CTkFrame(self)
         self.days_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Nombres de días de la semana
         weekdays = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
         for col, day_name in enumerate(weekdays):
-            lbl = ctk.CTkLabel(self.days_frame, text=day_name, font=("Arial", 11, "bold"), text_color="gray")
+            header_day_col = "#c2410c" if (is_orange and is_light) else ("#f97316" if is_orange else "gray")
+            lbl = ctk.CTkLabel(self.days_frame, text=day_name, font=("Arial", 11, "bold"), text_color=header_day_col)
             lbl.grid(row=0, column=col, pady=5, sticky="nsew")
             
         for i in range(7):
@@ -121,11 +299,45 @@ class CTkCalendarPopup(ctk.CTkToplevel):
         self.day_buttons = []
         self.draw_calendar()
 
+        # Botón Borrar para eliminar la fecha y dejarla en blanco
+        if self.allow_clear:
+            self.bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
+            self.bottom_frame.pack(fill="x", padx=10, pady=(0, 10))
+            
+            self.btn_borrar = ctk.CTkButton(
+                self.bottom_frame,
+                text="🗑 Borrar",
+                font=("Arial", 13, "bold"),
+                fg_color=("#fee2e2", "#450a0a") if is_orange else ("gray80", "gray30"),
+                text_color="#dc2626" if is_orange else ("black", "white"),
+                hover_color=("#fecaca", "#7f1d1d") if is_orange else ("gray70", "gray40"),
+                height=32,
+                command=self.clear_date
+            )
+            self.btn_borrar.pack(fill="x")
+
+        # Anclaje dinámico: si la ventana principal se mueve, mover el calendario en conjunto
+        self._bind_id = self.master.bind("<Configure>", self._on_master_configure, add="+")
+
+    def _on_master_configure(self, event=None):
+        if not self.winfo_exists():
+            return
+        if self.anchor_widget and self.anchor_widget.winfo_exists():
+            try:
+                x = self.anchor_widget.winfo_rootx()
+                y = self.anchor_widget.winfo_rooty() + self.anchor_widget.winfo_height() + 5
+                self.geometry(f"+{x}+{y}")
+            except Exception:
+                pass
+
     def draw_calendar(self):
         # Limpiar botones anteriores
         for btn in self.day_buttons:
             btn.destroy()
         self.day_buttons.clear()
+        
+        is_orange = (self.theme == "orange")
+        is_light = ctk.get_appearance_mode() == "Light"
         
         # Nombre del mes
         meses = [
@@ -142,12 +354,19 @@ class CTkCalendarPopup(ctk.CTkToplevel):
                 if day == 0:
                     continue
                 # Resaltar el día seleccionado
-                is_selected = (self.year == self.selected_date.year and 
+                is_selected = (self.selected_date is not None and
+                               self.year == self.selected_date.year and 
                                self.month == self.selected_date.month and 
                                day == self.selected_date.day)
                 
-                fg_col = "#1f538d" if is_selected else "transparent"
-                text_col = "white" if is_selected else ("white" if ctk.get_appearance_mode() == "Dark" else "black")
+                if is_selected:
+                    fg_col = self.primary_color
+                    text_col = "white"
+                    hover_col = self.primary_hover
+                else:
+                    fg_col = "transparent"
+                    text_col = "#7c2d12" if (is_orange and is_light) else ("#fed7aa" if is_orange else ("white" if not is_light else "black"))
+                    hover_col = "#fed7aa" if (is_orange and is_light) else ("#7c2d12" if is_orange else "#2b2b2b")
                 
                 btn = ctk.CTkButton(
                     self.days_frame,
@@ -156,7 +375,7 @@ class CTkCalendarPopup(ctk.CTkToplevel):
                     height=30,
                     fg_color=fg_col,
                     text_color=text_col,
-                    hover_color="#2b2b2b" if not is_selected else "#1f538d",
+                    hover_color=hover_col,
                     command=lambda d=day: self.select_day(d)
                 )
                 btn.grid(row=row_idx, column=col_idx, padx=2, pady=2)
@@ -182,6 +401,19 @@ class CTkCalendarPopup(ctk.CTkToplevel):
         chosen_date = datetime.date(self.year, self.month, day)
         self.callback(chosen_date)
         self.destroy()
+
+    def clear_date(self):
+        self.callback(None)
+        self.destroy()
+
+    def destroy(self):
+        if hasattr(self, '_bind_id') and self._bind_id and self.master:
+            try:
+                self.master.unbind("<Configure>", self._bind_id)
+            except Exception:
+                pass
+            self._bind_id = None
+        super().destroy()
 
 
 class ClickMenu:
@@ -221,11 +453,68 @@ class ClickMenu:
         def make_command(lbl):
             return lambda: self.command_callback(lbl)
 
-        for label in self.options_dict.keys():
-            self.menu.add_command(
-                label=label,
-                command=make_command(label)
-            )
+        btn_text = self.widget.cget("text")
+        for idx, label in enumerate(self.options_dict.keys()):
+            item_kwargs = {
+                "label": label,
+                "command": make_command(label)
+            }
+            # Opciones de VVC (primeras 5 y últimas 6)
+            if btn_text == "VVC":
+                if idx < 5:
+                    vvc_bg = "#FAC7EA"
+                    vvc_hover_bg = "#f7b0e0"
+                else:
+                    vvc_bg = "#EAFAC7"
+                    vvc_hover_bg = "#dbf5ad"
+                item_kwargs["background"] = vvc_bg
+                item_kwargs["foreground"] = "black"
+                item_kwargs["activebackground"] = vvc_hover_bg
+                item_kwargs["activeforeground"] = "black"
+
+            # Opciones de IO (primeras 2, 3 a 5, 6 a 9)
+            elif btn_text == "IO":
+                if idx < 2:
+                    io_bg = "#FDE3AF"
+                    io_hover_bg = "#fcd992"
+                elif idx < 5:
+                    io_bg = "#EAFAC7"
+                    io_hover_bg = "#dbf5ad"
+                else:
+                    io_bg = "#E9BFFD"
+                    io_hover_bg = "#dfa6f7"
+                item_kwargs["background"] = io_bg
+                item_kwargs["foreground"] = "black"
+                item_kwargs["activebackground"] = io_hover_bg
+                item_kwargs["activeforeground"] = "black"
+
+            # Opciones de RTS (primeras 4, opciones 5 en adelante)
+            elif btn_text == "RTS":
+                if idx < 4:
+                    rts_bg = "#BACDF2"
+                    rts_hover_bg = "#a2bbf0"
+                else:
+                    rts_bg = "#F2BACD"
+                    rts_hover_bg = "#f0a2ba"
+                item_kwargs["background"] = rts_bg
+                item_kwargs["foreground"] = "black"
+                item_kwargs["activebackground"] = rts_hover_bg
+                item_kwargs["activeforeground"] = "black"
+
+            # Opciones de RE (primeras 6, opciones 7 a 12)
+            elif btn_text == "RE":
+                if idx < 6:
+                    re_bg = "#AFFDF6"
+                    re_hover_bg = "#94fcee"
+                else:
+                    re_bg = "#F7AFFD"
+                    re_hover_bg = "#f394fc"
+                item_kwargs["background"] = re_bg
+                item_kwargs["foreground"] = "black"
+                item_kwargs["activebackground"] = re_hover_bg
+                item_kwargs["activeforeground"] = "black"
+
+            self.menu.add_command(**item_kwargs)
             
         x = self.widget.winfo_rootx()
         y = self.widget.winfo_rooty() + self.widget.winfo_height()
@@ -333,8 +622,11 @@ class ExpedienteInputFrame(ctk.CTkFrame):
             
         year = self.year_combo.get()
         
-        # Devolver en el formato esperado
-        return f"{prefix}/OV/{materia}/{number}/{year}"
+        # Para IO no lleva OV, para las demás materias incluye OV
+        if materia == "IO":
+            return f"{prefix}/IO/{number}/{year}"
+        else:
+            return f"{prefix}/OV/{materia}/{number}/{year}"
 
     def limpiar(self):
         # El prefijo (INVEACDMX / INVEADF) se conserva seleccionado
@@ -400,21 +692,55 @@ class MainWindow(Tk):
         self.entry_expediente = ExpedienteInputFrame(self.panel_izquierdo)
         self.entry_expediente.grid(row=1, column=0, padx=10, pady=(0, 15), sticky="w")
 
-        # Fecha de ejecución
-        ctk.CTkLabel(self.panel_izquierdo, text="Fecha de ejecución:", font=("Arial", 14, "bold")).grid(row=2, column=0, padx=10, pady=(5, 5), sticky="w")
+        # Fechas lado a lado (Ejecución y Resolución / Acuerdo)
+        self.frame_fechas = ctk.CTkFrame(self.panel_izquierdo, fg_color="transparent")
+        self.frame_fechas.grid(row=2, column=0, padx=10, pady=(5, 15), sticky="w")
+        
+        # 1. Ejecución (Izquierda)
+        self.frame_fecha_ejec = ctk.CTkFrame(self.frame_fechas, fg_color="transparent")
+        self.frame_fecha_ejec.pack(side="left", padx=(0, 20))
+        
+        ctk.CTkLabel(
+            self.frame_fecha_ejec, 
+            text="Ejecución:", 
+            font=("Arial", 14, "bold")
+        ).pack(anchor="w", pady=(0, 5))
+        
         self.fecha_ejecucion = datetime.date.today()
         self.btn_fecha = ctk.CTkButton(
-            self.panel_izquierdo,
+            self.frame_fecha_ejec,
             text=self.fecha_ejecucion.strftime("%Y-%m-%d"),
-            width=150,
+            width=140,
             font=("Arial", 14),
             command=self.abrir_calendario
         )
-        self.btn_fecha.grid(row=3, column=0, padx=10, pady=(0, 15), sticky="w")
+        self.btn_fecha.pack(anchor="w")
+
+        # 2. Resolución / Acuerdo (Derecha, Naranja)
+        self.frame_fecha_res = ctk.CTkFrame(self.frame_fechas, fg_color="transparent")
+        self.frame_fecha_res.pack(side="left")
+        
+        ctk.CTkLabel(
+            self.frame_fecha_res, 
+            text="Resolución / Acuerdo:", 
+            font=("Arial", 14, "bold")
+        ).pack(anchor="w", pady=(0, 5))
+        
+        self.fecha_resolucion = None
+        self.btn_fecha_resolucion = ctk.CTkButton(
+            self.frame_fecha_res,
+            text="YYYY-mm-dd",
+            width=140,
+            font=("Arial", 14),
+            fg_color="#ea580c",
+            hover_color="#c2410c",
+            command=self.abrir_calendario_resolucion
+        )
+        self.btn_fecha_resolucion.pack(anchor="w")
 
         # Archivo activo seleccionado
         self.frame_seleccionado = ctk.CTkFrame(self.panel_izquierdo, fg_color="transparent")
-        self.frame_seleccionado.grid(row=4, column=0, padx=10, pady=(0, 10), sticky="w")
+        self.frame_seleccionado.grid(row=3, column=0, padx=10, pady=(0, 10), sticky="w")
         
         self.lbl_seleccionado_titulo = ctk.CTkLabel(
             self.frame_seleccionado, 
@@ -433,11 +759,11 @@ class MainWindow(Tk):
         self.lbl_archivo_activo.pack(side="left")
 
         # Clasificaciones (ScrollableFrame para alojar los botones)
-        ctk.CTkLabel(self.panel_izquierdo, text="Renombrar:", font=("Arial", 14, "bold")).grid(row=5, column=0, padx=10, pady=(10, 5), sticky="w")
+        ctk.CTkLabel(self.panel_izquierdo, text="Renombrar:", font=("Arial", 14, "bold")).grid(row=4, column=0, padx=10, pady=(10, 5), sticky="w")
         
         self.scroll_frame = ctk.CTkScrollableFrame(self.panel_izquierdo)
-        self.scroll_frame.grid(row=6, column=0, padx=10, pady=5, sticky="nsew")
-        self.panel_izquierdo.grid_rowconfigure(6, weight=1)
+        self.scroll_frame.grid(row=5, column=0, padx=10, pady=5, sticky="nsew")
+        self.panel_izquierdo.grid_rowconfigure(5, weight=1)
 
         # Configurar 4 columnas para la retícula
         self.scroll_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
@@ -459,16 +785,32 @@ class MainWindow(Tk):
             self.botones_clasificacion.append(btn)
 
     def abrir_calendario(self):
-        x = self.btn_fecha.winfo_rootx()
-        y = self.btn_fecha.winfo_rooty() + self.btn_fecha.winfo_height() + 5
-        CTkCalendarPopup(self, self.fecha_ejecucion, self.actualizar_fecha, x=x, y=y)
+        CTkCalendarPopup(self, self.fecha_ejecucion, self.actualizar_fecha, anchor_widget=self.btn_fecha, theme="blue")
 
     def actualizar_fecha(self, nueva_fecha):
-        self.fecha_ejecucion = nueva_fecha
-        self.btn_fecha.configure(text=self.fecha_ejecucion.strftime("%Y-%m-%d"))
+        if nueva_fecha:
+            self.fecha_ejecucion = nueva_fecha
+            self.btn_fecha.configure(text=self.fecha_ejecucion.strftime("%Y-%m-%d"))
 
     def get_fecha_ejecucion(self) -> str:
         return self.fecha_ejecucion.strftime("%Y-%m-%d")
+
+    def abrir_calendario_resolucion(self):
+        init_date = self.fecha_resolucion if self.fecha_resolucion else datetime.date.today()
+        CTkCalendarPopup(self, init_date, self.actualizar_fecha_resolucion, anchor_widget=self.btn_fecha_resolucion, theme="orange")
+
+    def actualizar_fecha_resolucion(self, nueva_fecha):
+        self.fecha_resolucion = nueva_fecha
+        self.btn_fecha_resolucion.configure(text=self.fecha_resolucion.strftime("%Y-%m-%d") if self.fecha_resolucion else "YYYY-mm-dd")
+
+    def limpiar_fecha_resolucion(self):
+        self.fecha_resolucion = None
+        self.btn_fecha_resolucion.configure(text="YYYY-mm-dd")
+
+    def get_fecha_resolucion(self) -> str:
+        if self.fecha_resolucion:
+            return self.fecha_resolucion.strftime("%Y-%m-%d")
+        return ""
 
     def _crear_panel_preview(self):
         self.panel_preview = ctk.CTkFrame(self)
@@ -534,13 +876,13 @@ class MainWindow(Tk):
         frame_botones_top = ctk.CTkFrame(frame_top, fg_color="transparent")
         frame_botones_top.grid(row=0, column=0, pady=(0, 10))
 
-        self.btn_origen = ctk.CTkButton(frame_botones_top, text="📂 Origen", width=90, height=33, font=("Arial", 14), fg_color=("gray75", "gray30"), hover_color=("gray65", "gray40"), text_color=("black", "white"))
+        self.btn_origen = ctk.CTkButton(frame_botones_top, text="📂 Origen", width=90, height=33, font=("Arial", 14), fg_color=("#3a7ebf", "#1f538d"), hover_color=("#326da8", "#14375e"), text_color="white")
         self.btn_origen.pack(side="left", padx=4)
 
-        self.btn_destino = ctk.CTkButton(frame_botones_top, text="📂 Destino", width=90, height=33, font=("Arial", 14), fg_color=("gray75", "gray30"), hover_color=("gray65", "gray40"), text_color=("black", "white"))
+        self.btn_destino = ctk.CTkButton(frame_botones_top, text="📂 Destino", width=90, height=33, font=("Arial", 14), fg_color=("#3a7ebf", "#1f538d"), hover_color=("#326da8", "#14375e"), text_color="white")
         self.btn_destino.pack(side="left", padx=4)
 
-        self.btn_refrescar = ctk.CTkButton(frame_botones_top, text="🔄 Recargar", width=90, height=33, font=("Arial", 14), fg_color=("gray75", "gray30"), hover_color=("gray65", "gray40"), text_color=("black", "white"))
+        self.btn_refrescar = ctk.CTkButton(frame_botones_top, text="🔄 Recargar", width=90, height=33, font=("Arial", 14), fg_color=("#3a7ebf", "#1f538d"), hover_color=("#326da8", "#14375e"), text_color="white")
         self.btn_refrescar.pack(side="left", padx=4)
 
         # 2. Etiqueta con ruta de la carpeta origen
@@ -610,7 +952,14 @@ class MainWindow(Tk):
         
         for item in self.widgets_lista:
             if not isinstance(item, tuple): continue
-            frame_item, lbl_icon, lbl_text, ruta_completa = item
+            if len(item) == 5:
+                frame_item, lbl_icon, lbl_text, btn_delete, ruta_completa = item
+            elif len(item) == 4:
+                frame_item, lbl_icon, lbl_text, ruta_completa = item
+                btn_delete = None
+            else:
+                continue
+
             nombre_archivo = os.path.basename(ruta_completa)
             es_activo = (ruta_completa in archivos_seleccionados)
             es_renombrado = bool(re.match(patron, nombre_archivo, re.IGNORECASE))
@@ -635,7 +984,7 @@ class MainWindow(Tk):
             lbl_icon.configure(text_color=txt_col)
             lbl_text.configure(text_color=txt_col, font=("Arial", 14, "bold" if es_activo else "normal"))
 
-    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivos_seleccionados=None, callback_rename=None):
+    def mostrar_lista_archivos(self, lista_archivos, callback_click, archivos_seleccionados=None, callback_rename=None, callback_delete=None):
         if archivos_seleccionados is None:
             archivos_seleccionados = []
             
@@ -694,10 +1043,48 @@ class MainWindow(Tk):
             lbl_icon = ctk.CTkLabel(frame_item, text=f"{index + 1}. 📄", font=("Arial", 22), text_color=txt_col)
             lbl_icon.pack(side="left", padx=(10, 5))
 
+            # Botón de eliminar con icono SVG en la lateral extrema derecha
+            if callback_delete:
+                def on_delete_action(r=ruta_completa, n=nombre_archivo):
+                    CTkConfirmDeleteDialog(self, n, lambda: callback_delete(r))
+
+                ctk_icon = obtener_icono_delete_ctk(size=(24, 24))
+                if ctk_icon:
+                    btn_delete = ctk.CTkButton(
+                        frame_item,
+                        image=ctk_icon,
+                        text="",
+                        width=30,
+                        height=30,
+                        corner_radius=6,
+                        fg_color="transparent",
+                        hover_color="#fee2e2" if is_light else "#450a0a",
+                        cursor="hand2"
+                    )
+                else:
+                    btn_delete = ctk.CTkButton(
+                        frame_item,
+                        text="🗑",
+                        font=("Arial", 16),
+                        width=30,
+                        height=30,
+                        corner_radius=6,
+                        fg_color="transparent",
+                        text_color="#A32A10",
+                        hover_color="#fee2e2" if is_light else "#450a0a",
+                        cursor="hand2"
+                    )
+
+                btn_delete.pack(side="right", padx=(4, 8))
+                btn_delete.configure(command=on_delete_action)
+                ToolTip(btn_delete, "Eliminar archivo")
+            else:
+                btn_delete = None
+
             # Texto normal
             lbl_text = ctk.CTkLabel(frame_item, text=nombre_archivo, font=("Arial", 14, "bold" if es_activo else "normal"), text_color=txt_col, anchor="w")
             lbl_text.pack(side="left", fill="x", expand=True)
-            self.widgets_lista.append((frame_item, lbl_icon, lbl_text, ruta_completa))
+            self.widgets_lista.append((frame_item, lbl_icon, lbl_text, btn_delete, ruta_completa))
 
             # Efectos hover dinámicos unificados para todo el grupo (frame, icono y texto)
             def on_enter(e, f=frame_item):

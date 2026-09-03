@@ -11,20 +11,22 @@ class FileManager:
         """
         Valida el expediente parte por parte y devuelve si es válido junto con
         un mensaje específico en caso de que falte o sea incorrecto algún dato.
+        Admite formatos:
+        - Materia IO (4 partes): INVEACDMX/IO/777/2026
+        - Otras materias con OV (5 partes): INVEACDMX/OV/DU/777/2026
         """
-        partes = expediente.split('/')
-        if len(partes) != 5:
+        partes = [p.strip() for p in expediente.split('/') if p.strip()]
+        if len(partes) == 4:
+            prefix, materia, number, year = partes
+            ov = ""
+        elif len(partes) == 5:
+            prefix, ov, materia, number, year = partes
+        else:
             return False, "El formato del expediente no es válido."
             
-        prefix = partes[0].strip()
-        ov = partes[1].strip()
-        materia = partes[2].strip()
-        number = partes[3].strip()
-        year = partes[4].strip()
-        
         if not prefix or prefix not in ["INVEACDMX", "INVEADF"]:
             return False, "Falta seleccionar un prefijo válido para el expediente (INVEACDMX / INVEADF)."
-        if ov != "OV":
+        if len(partes) == 5 and ov != "OV":
             return False, "El formato del expediente debe incluir /OV/."
         if not materia:
             return False, "Falta seleccionar la materia del expediente."
@@ -46,18 +48,25 @@ class FileManager:
         """
         Extrae los componentes del expediente y genera el nombre de la carpeta:
         (prefijo, ov, materia, numero, anio, nombre_carpeta)
+        - Para IO: (prefijo, "", "IO", numero, anio, "PREFIJO-IO-NUM-ANIO")
+        - Para otros: (prefijo, "OV", materia, numero, anio, "PREFIJO-OV-MATERIA-NUM-ANIO")
         """
-        partes = expediente.split('/')
-        if len(partes) != 5:
+        partes = [p.strip() for p in expediente.split('/') if p.strip()]
+        if len(partes) == 4:
+            prefijo, materia, numero, anio = partes
+            ov = ""
+            nombre_carpeta = f"{prefijo}-{materia}-{numero}-{anio}"
+            return prefijo, ov, materia, numero, anio, nombre_carpeta
+        elif len(partes) == 5:
+            prefijo, ov, materia, numero, anio = partes
+            if materia == "IO":
+                ov = ""
+                nombre_carpeta = f"{prefijo}-IO-{numero}-{anio}"
+            else:
+                nombre_carpeta = f"{prefijo}-{ov}-{materia}-{numero}-{anio}"
+            return prefijo, ov, materia, numero, anio, nombre_carpeta
+        else:
             raise ValueError("Formato de expediente inválido.")
-        
-        prefijo = partes[0].strip()
-        ov = partes[1].strip()
-        materia = partes[2].strip()
-        numero = partes[3].strip()
-        anio = partes[4].strip()
-        nombre_carpeta = f"{prefijo}-{ov}-{materia}-{numero}-{anio}"
-        return prefijo, ov, materia, numero, anio, nombre_carpeta
 
     def calcular_rango_expediente(self, numero: str) -> str:
         """
@@ -65,6 +74,7 @@ class FileManager:
         1..100 -> 001-100
         101..200 -> 101-200
         507 -> 501-600
+        777 -> 701-800
         901..1000 -> 901-1000
         1001..1100 -> 1001-1100
         """
@@ -76,23 +86,25 @@ class FileManager:
     def verificar_y_crear_carpetas(self, expediente: str) -> Tuple[str, List[str]]:
         """
         Verifica paso a paso la existencia de las carpetas:
-        1. Año
-        2. Materia
-        3. Rango (ej. INVEACDMX-OV-DU-501-600)
-        4. Carpeta del Expediente (ej. INVEACDMX-OV-DU-507-2026)
+        1. Año (ej. 2026)
+        2. Materia (ej. INSPECCIONES OCULARES, MEDIOS PUBLICITARIOS, DU, etc.)
+        3. Rango (ej. INVEACDMX-IO-701-800 para IO, INVEACDMX-OV-DU-701-800 para DU)
+        4. Carpeta del Expediente (ej. INVEACDMX-IO-777-2026 para IO, INVEACDMX-OV-DU-777-2026 para DU)
         Crea las que falten y devuelve la ruta destino junto con la lista de carpetas creadas.
         """
         prefijo, ov, materia, numero, anio, nombre_carpeta = self.obtener_componentes_expediente(expediente)
         rango_num = self.calcular_rango_expediente(numero)
-        carpeta_rango = f"{prefijo}-{ov}-{materia}-{rango_num}"
-        
-        # Mapeo de nombres de carpeta de materia
+
+        # Mapeo de nombres de carpeta de materia y carpeta de rango
         if materia == "IO":
             carpeta_materia = "INSPECCIONES OCULARES"
+            carpeta_rango = f"{prefijo}-IO-{rango_num}"
         elif materia == "MP":
             carpeta_materia = "MEDIOS PUBLICITARIOS"
+            carpeta_rango = f"{prefijo}-{ov}-{materia}-{rango_num}"
         else:
             carpeta_materia = materia
+            carpeta_rango = f"{prefijo}-{ov}-{materia}-{rango_num}"
         
         ruta_anio = os.path.join(self.ruta_base, anio)
         ruta_materia = os.path.join(ruta_anio, carpeta_materia)
@@ -213,4 +225,68 @@ class FileManager:
 
         except Exception as e:
             return False, f"Error al procesar archivos: {str(e)}", {"archivos_colocados": 0, "carpetas_creadas": [], "errores": [str(e)]}
+
+    def enviar_a_papelera(self, ruta_archivo: str) -> Tuple[bool, str]:
+        """
+        Envía un archivo a la papelera de reciclaje de Windows de forma segura.
+        Retorna (Éxito, Mensaje)
+        """
+        if not os.path.exists(ruta_archivo):
+            return False, "El archivo ya no existe en el sistema."
+
+        try:
+            # Si send2trash está instalado, usarlo como opción alternativa
+            try:
+                import send2trash
+                send2trash.send2trash(os.path.abspath(ruta_archivo))
+                return True, "Archivo enviado a la papelera."
+            except ImportError:
+                pass
+
+            # API Nativa de Windows mediante SHFileOperationW
+            if os.name == 'nt':
+                import ctypes
+                from ctypes import wintypes
+
+                class SHFILEOPSTRUCTW(ctypes.Structure):
+                    _fields_ = [
+                        ("hwnd", wintypes.HWND),
+                        ("wFunc", wintypes.UINT),
+                        ("pFrom", wintypes.LPCWSTR),
+                        ("pTo", wintypes.LPCWSTR),
+                        ("fFlags", wintypes.WORD),
+                        ("fAnyOperationsAborted", wintypes.BOOL),
+                        ("hNameMappings", wintypes.LPVOID),
+                        ("lpszProgressTitle", wintypes.LPCWSTR),
+                    ]
+
+                FO_DELETE = 0x0003
+                FOF_ALLOWUNDO = 0x0040       # Habilita envío a la papelera de reciclaje
+                FOF_NOCONFIRMATION = 0x0010  # Sin diálogo del sistema (confirmado previamente)
+                FOF_SILENT = 0x0004          # Sin ventana de progreso del sistema
+
+                # La ruta de origen debe tener doble terminador nulo
+                abs_path = os.path.abspath(ruta_archivo)
+                p_from = abs_path + '\0\0'
+
+                fileop = SHFILEOPSTRUCTW()
+                fileop.hwnd = None
+                fileop.wFunc = FO_DELETE
+                fileop.pFrom = p_from
+                fileop.pTo = None
+                fileop.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
+                fileop.fAnyOperationsAborted = False
+                fileop.hNameMappings = None
+                fileop.lpszProgressTitle = None
+
+                res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(fileop))
+                if res != 0 or fileop.fAnyOperationsAborted:
+                    return False, f"No se pudo enviar el archivo a la papelera (Código de error: {res})."
+                return True, "Archivo enviado a la papelera con éxito."
+            else:
+                os.remove(ruta_archivo)
+                return True, "Archivo eliminado con éxito."
+        except Exception as e:
+            return False, f"Error al eliminar archivo: {str(e)}"
+
 

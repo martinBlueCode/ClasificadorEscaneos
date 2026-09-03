@@ -1,0 +1,14 @@
+{
+  "execMap": {
+    "py": "python"
+  },
+  "watch": [
+    "main.py",
+    "config.py",
+    "version.py",
+    "controllers",
+    "models",
+    "views"
+  ],
+  "ext": "py,json,svg"
+}

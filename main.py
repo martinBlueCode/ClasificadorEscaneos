@@ -6,9 +6,12 @@ import customtkinter as ctk
 # Intentar cerrar pyi_splash si PyInstaller splash estuviese activo
 try:
     import pyi_splash
-    pyi_splash.update_text("Iniciando...")
-    pyi_splash.close()
-except ImportError:
+    if hasattr(pyi_splash, 'is_alive') and pyi_splash.is_alive():
+        pyi_splash.update_text("Iniciando...")
+        pyi_splash.close()
+    elif hasattr(pyi_splash, 'close'):
+        pyi_splash.close()
+except Exception:
     pass
 
 # Control de instancia única (Mutex de Windows)
@@ -16,6 +19,10 @@ except ImportError:
 _app_mutex = None
 
 def asegurar_instancia_unica():
+    # Solo aplicar en el ejecutable compilado para permitir reinicios en desarrollo con nodemon
+    if not getattr(sys, 'frozen', False):
+        return None
+
     global _app_mutex
     MUTEX_NAME = "Global\\ClasificadorEscaneosMB_SingleInstanceMutex"
     kernel32 = ctypes.windll.kernel32
