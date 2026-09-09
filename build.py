@@ -89,7 +89,8 @@ def compilar():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconsole",
-        "--onefile",
+        "--onedir",
+        # "--onefile",
         "--clean",
         "--name", nombre_ejecutable,
         "--specpath", carpeta_build,      # Guarda el .spec dentro de build/
@@ -133,8 +134,9 @@ def compilar():
     
     if res.returncode == 0:
         print(f"\n=======================================================")
-        print(f"✅ ¡Compilacion exitosa!")
-        print(f"📁 Ubicacion: {escritorio}\\{nombre_ejecutable}.exe")
+        print(f"✅ ¡Compilacion exitosa en modo rapido (sin comprimir)!")
+        print(f"📁 Carpeta en Escritorio: {escritorio}\\{nombre_ejecutable}")
+        print(f"🚀 Ejecutable principal:  {escritorio}\\{nombre_ejecutable}\\{nombre_ejecutable}.exe")
         print(f"✨ Raiz del proyecto 100% limpia de archivos .spec")
         print(f"=======================================================\n")
     else:

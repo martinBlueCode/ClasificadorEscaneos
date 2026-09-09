@@ -104,7 +104,8 @@ for i, (nombre, desc) in enumerate(DEFINICION_BOTONES):
 DICCIONARIO_SUBMENUS_MAESTRO = {
     # Oficios de comision
     "Oficio Comision": "OC",
-    "Oficio Comision (Combo)": "NAC-RTS-RPS-OC",    
+    "Oficio Comision (Combo)": "NAC-RTS-RPS-OC",
+    "Oficio Comision (+NAC)": "NAC-OC",    
     
     "Oficio Comision RPS/IMC": "RPS-IMC-OC",
     "Oficio Comision RPS/CLA": "RPS-CLA-OC",
@@ -182,12 +183,13 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Citatorio NCS/CT": "NCS-CT",
     "Citatorio instructivo NCS/CI": "NCS-CI",    
     "Instructivo NCS/IN": "NCS-IN",
-    "Cedula NCS/CE": 
+    "Cedula NCS/CE": "NCS-CE",
     "Resolucion NSS/RE": "NSS",
     "Razon NSS/RA": "NSS-RA",
     "Citatorio NSS/CT": "NSS-CT",
     "Citatorio instructivo NSS/CI": "NSS-CI",    
-    "Instructivo NSS/IN": "NSS-IN"
+    "Instructivo NSS/IN": "NSS-IN",
+    "Cedula NSS/CE": "NSS-CE"
     
 }
 
@@ -215,6 +217,7 @@ CONFIGURACION_SUBMENUS = {
         "Carta de derechos", 
         "Citatorio", 
         "Oficio Comision (Combo)",
+        "Oficio Comision (+NAC)",
         "Cedula de Acuerdo",
         "Citatorio de Acuerdo",
         "Retiro de Sellos", 

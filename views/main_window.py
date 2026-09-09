@@ -555,7 +555,7 @@ class ExpedienteInputFrame(ctk.CTkFrame):
             command=self._on_materia_changed
         )
         self.materia_combo.grid(row=0, column=2, padx=2, sticky="w")
-        self.materia_combo.set("DU")  # Valor por defecto
+        self.materia_combo.set("")  # En blanco por defecto
         
         # 4. Separador: /
         self.lbl_sep1 = ctk.CTkLabel(

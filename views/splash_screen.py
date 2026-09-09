@@ -93,10 +93,11 @@ class CircularProgressBar(tk.Canvas):
             self.after(25, self._animate_step)
 
 
-class SplashScreen(ctk.CTk):
-    def __init__(self, on_success_callback, check_license_func):
-        super().__init__()
+class SplashScreen(ctk.CTkToplevel):
+    def __init__(self, master, on_success_callback, check_license_func):
+        super().__init__(master)
         
+        self.master = master
         self.on_success_callback = on_success_callback
         self.check_license_func = check_license_func
         self.license_valid = False
@@ -128,6 +129,7 @@ class SplashScreen(ctk.CTk):
         pos_y = int((pantalla_alto - alto) / 2)
         self.geometry(f"{ancho}x{alto}+{pos_x}+{pos_y}")
         self.attributes("-topmost", True)
+        self.lift()
         
         # Contenedor principal con tarjeta estilizada
         self.card = ctk.CTkFrame(
@@ -188,13 +190,15 @@ class SplashScreen(ctk.CTk):
         self.lbl_footer.pack(side="bottom", pady=(0, 16))
         
         # Iniciar proceso de carga en segundo plano tras mostrar la ventana
-        self.after(100, self._start_loading_task)
+        self.after(50, self._start_loading_task)
 
     def update_status(self, percent: float, text: str):
         """Actualiza el progreso y el texto de estado de forma segura para hilos"""
         self.after(0, lambda: self._apply_update(percent, text))
 
     def _apply_update(self, percent: float, text: str):
+        if not self.winfo_exists():
+            return
         self.progress_bar.set_progress(percent)
         self.lbl_status.configure(text=text)
 
@@ -203,46 +207,31 @@ class SplashScreen(ctk.CTk):
 
     def _worker(self):
         try:
-            # 1. Inicio de entorno (1.0s)
-            self.update_status(20, "Iniciando entorno...")
-            time.sleep(1.0)
+            # 1. Inicio de entorno
+            self.update_status(25, "Iniciando entorno...")
+            time.sleep(0.1)
             
-            # 2. Verificación de licencia (~1.0s)
-            self.update_status(40, "Verificando acceso y licencia...")
+            # 2. Verificación de licencia
+            self.update_status(50, "Verificando acceso y licencia...")
             self.license_valid = self.check_license_func()
             
             if not self.license_valid:
                 self.update_status(50, "Acceso no autorizado.")
-                time.sleep(0.8)
+                time.sleep(0.3)
                 self.after(0, self._handle_license_denied)
                 return
             
-            time.sleep(0.8)
+            # 3. Preparación de módulos y componentes
+            self.update_status(80, "Cargando módulos y componentes...")
+            time.sleep(0.15)
             
-            # 3. Carga real de módulos y librerías pesadas (~1.0s)
-            self.update_status(65, "Cargando módulos y componentes...")
-            try:
-                import fitz
-                from PIL import Image
-                import views.main_window
-                import controllers.app_controller
-                import models.file_manager
-            except Exception as e:
-                print(f"Advertencia precarga de módulos: {e}")
-            time.sleep(0.9)
-            
-            # 4. Preparación de interfaz (1.0s)
-            self.update_status(85, "Preparando interfaz gráfica...")
-            time.sleep(1.0)
-            
-            # 5. Finalización exitosa (1.0s)
+            # 4. Finalización rápida y limpia
             self.update_status(100, "¡Iniciando aplicación!")
-            time.sleep(1.0)
+            time.sleep(0.2)
             
             self.after(0, self._finish_and_launch)
             
         except Exception as e:
-            # En caso de error inesperado en la carga
             print(f"Error durante la inicialización: {e}")
             self.after(0, self._finish_and_launch)
 
@@ -255,10 +244,12 @@ class SplashScreen(ctk.CTk):
             "Acceso denegado, comunícate con el área de Logística y Planeación."
         )
         self.destroy()
-        sys.exit()
+        if self.master and self.master.winfo_exists():
+            self.master.destroy()
+        sys.exit(0)
 
     def _finish_and_launch(self):
         self.progress_bar.is_animating = False
         self.destroy()
-        # Llamar al callback que arranca la ventana principal
-        self.on_success_callback()
+        if self.on_success_callback:
+            self.on_success_callback()

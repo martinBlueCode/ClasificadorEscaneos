@@ -15,26 +15,22 @@ class FileManager:
         - Materia IO (4 partes): INVEACDMX/IO/777/2026
         - Otras materias con OV (5 partes): INVEACDMX/OV/DU/777/2026
         """
-        partes = [p.strip() for p in expediente.split('/') if p.strip()]
+        partes = [p.strip() for p in expediente.split('/')]
         if len(partes) == 4:
             prefix, materia, number, year = partes
             ov = ""
         elif len(partes) == 5:
             prefix, ov, materia, number, year = partes
         else:
-            return False, "El formato del expediente no es válido."
+            return False, "El formato del expediente no es válido, ningún input del expediente puede ir vacío."
             
-        if not prefix or prefix not in ["INVEACDMX", "INVEADF"]:
+        if not prefix or not materia or not number or not year:
+            return False, "El formato del expediente no es válido, ningún input del expediente puede ir vacío."
+
+        if prefix not in ["INVEACDMX", "INVEADF"]:
             return False, "Falta seleccionar un prefijo válido para el expediente (INVEACDMX / INVEADF)."
         if len(partes) == 5 and ov != "OV":
             return False, "El formato del expediente debe incluir /OV/."
-        if not materia:
-            return False, "Falta seleccionar la materia del expediente."
-        if not number:
-            return False, "Falta ingresar el número de expediente."
-        if not year:
-            return False, "Falta seleccionar el año del expediente."
-            
         if not number.isdigit():
             return False, "El número de expediente debe contener únicamente dígitos."
         if number.startswith('0'):
@@ -48,40 +44,45 @@ class FileManager:
         """
         Extrae los componentes del expediente y genera el nombre de la carpeta:
         (prefijo, ov, materia, numero, anio, nombre_carpeta)
-        - Para IO: (prefijo, "", "IO", numero, anio, "PREFIJO-IO-NUM-ANIO")
-        - Para otros: (prefijo, "OV", materia, numero, anio, "PREFIJO-OV-MATERIA-NUM-ANIO")
+        - Para IO: (prefijo, "", "IO", numero, anio, "PREFIJO-IO-0001..-ANIO")
+        - Para otros: (prefijo, "OV", materia, numero, anio, "PREFIJO-OV-MATERIA-0001..-ANIO")
         """
-        partes = [p.strip() for p in expediente.split('/') if p.strip()]
+        partes = [p.strip() for p in expediente.split('/')]
         if len(partes) == 4:
             prefijo, materia, numero, anio = partes
             ov = ""
-            nombre_carpeta = f"{prefijo}-{materia}-{numero}-{anio}"
+            num_pad = numero.zfill(4)
+            if materia == "IO":
+                nombre_carpeta = f"{prefijo}-IO-{num_pad}-{anio}"
+            else:
+                nombre_carpeta = f"{prefijo}-{materia}-{num_pad}-{anio}"
             return prefijo, ov, materia, numero, anio, nombre_carpeta
         elif len(partes) == 5:
             prefijo, ov, materia, numero, anio = partes
+            num_pad = numero.zfill(4)
             if materia == "IO":
                 ov = ""
-                nombre_carpeta = f"{prefijo}-IO-{numero}-{anio}"
+                nombre_carpeta = f"{prefijo}-IO-{num_pad}-{anio}"
             else:
-                nombre_carpeta = f"{prefijo}-{ov}-{materia}-{numero}-{anio}"
+                nombre_carpeta = f"{prefijo}-{ov}-{materia}-{num_pad}-{anio}"
             return prefijo, ov, materia, numero, anio, nombre_carpeta
         else:
             raise ValueError("Formato de expediente inválido.")
 
     def calcular_rango_expediente(self, numero: str) -> str:
         """
-        Calcula el rango numérico de 100 en 100 para el número de expediente:
-        1..100 -> 001-100
-        101..200 -> 101-200
-        507 -> 501-600
-        777 -> 701-800
-        901..1000 -> 901-1000
+        Calcula el rango numérico de 100 en 100 con 4 dígitos para el número de expediente:
+        1..100 -> 0001-0100
+        101..200 -> 0101-0200
+        507 -> 0501-0600
+        777 -> 0701-0800
+        901..1000 -> 0901-1000
         1001..1100 -> 1001-1100
         """
         num = int(numero)
         inicio = ((num - 1) // 100) * 100 + 1
         fin = ((num - 1) // 100 + 1) * 100
-        return f"{inicio:03d}-{fin}"
+        return f"{inicio:04d}-{fin:04d}"
 
     def verificar_y_crear_carpetas(self, expediente: str) -> Tuple[str, List[str]]:
         """

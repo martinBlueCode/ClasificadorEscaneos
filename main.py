@@ -51,8 +51,8 @@ def check_license():
     
     for url in urls:
         try:
-            # Timeout corto de 2.5s para no retrasar el inicio
-            respuesta = requests.post(url, data=params, timeout=2.5)
+            # Timeout corto de 1.8s para no retrasar el inicio
+            respuesta = requests.post(url, data=params, timeout=1.8)
             if respuesta.status_code == 200:
                 json_res = respuesta.json()
                 # La API en raw_query devuelve {"message": "...", "columns": [...], "data": [...]}
@@ -72,34 +72,40 @@ def check_license():
             
     return False # Ambas fallaron o no devolvieron resultados
 
-def lanzar_aplicacion():
+def main():
+    asegurar_instancia_unica()
+    
     from views.main_window import MainWindow
     from controllers.app_controller import AppController
+    from views.splash_screen import SplashScreen
 
     # Configuración de apariencia
     ctk.set_appearance_mode("Light")  # Modo tradicional (claro)
     ctk.set_default_color_theme("blue")  # Tema base de colores
 
-    # Instanciar la vista principal
+    # 1. Instanciar la vista principal y mantenerla oculta mientras corre el Splash
     app = MainWindow()
+    app.withdraw()
     
-    # Instanciar el controlador y conectarlo a la vista
+    # 2. Instanciar el controlador y conectarlo a la vista
     controller = AppController(app)
+
+    def al_completar_splash():
+        # Mostrar ventana principal centrada y traer al frente
+        if app.winfo_exists():
+            app.deiconify()
+            app.lift()
+            app.focus_force()
+
+    # 3. Mostrar la pantalla de carga como Toplevel sobre la aplicación
+    splash = SplashScreen(
+        master=app,
+        on_success_callback=al_completar_splash,
+        check_license_func=check_license
+    )
 
     # Iniciar el loop principal de la aplicación
     app.mainloop()
-
-def main():
-    asegurar_instancia_unica()
-    
-    from views.splash_screen import SplashScreen
-    
-    # Mostrar la pantalla de carga con indicador circular de porcentaje
-    splash = SplashScreen(
-        on_success_callback=lanzar_aplicacion,
-        check_license_func=check_license
-    )
-    splash.mainloop()
 
 if __name__ == "__main__":
     main()
