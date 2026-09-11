@@ -112,11 +112,14 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
 
     "Oficio Comision RTS/IMC": "IMC-OC",
     "Oficio Comision RTS/CLA": "CLA-OC",    
-    "Oficio Comision RTS_IMC": "RTS_IMC-OC",
+    "Oficio Comision RTS/IMC": "RTS-IMC-OC",
 
     "Oficio Comision NAC/AD": "NAC-OC",
     "Oficio Comision NCS/RE": "NCS-OC",
     "Oficio Comision NSS/RE": "NSS-OC",
+
+    "Oficio Comision NCS/CLA": "NCS-OC",
+    "Oficio Comision NCS/RTS/IMC": "NCS-RTS-IMC-OC",
     
     # Otros documentos
     "Orden": "OR",
@@ -129,6 +132,7 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Razon": "RA",
     "Acuerdo": "AD",
     "Citatorio": "CT",
+    "Citatorio IN": "CI",
     "Resolucion": "RE",
     "Acuerdo NAC/AD": "NAC",
 
@@ -197,7 +201,7 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
 CONFIGURACION_SUBMENUS = {
     "VVE": [
         "Oficio Comision", 
-        "Citatorio", 
+        "Citatorio IN", 
         "Orden", 
         "Carta de derechos", 
         "Acta", 
@@ -226,7 +230,9 @@ CONFIGURACION_SUBMENUS = {
     ],
     "CLA": [
         "Oficio Comision", 
-        "Oficio Comision RTS_IMC",
+        "Oficio Comision RTS/IMC",
+        "Oficio Comision NCS/CLA",
+        "Oficio Comision NCS/RTS/IMC",
         "Resolucion", 
         "Cedula notificacion",
         "Orden", 
