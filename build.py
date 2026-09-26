@@ -62,6 +62,60 @@ def limpiar_archivos_spec():
             except Exception:
                 pass
 
+def generar_version_file(version_str: str, output_path: str):
+    """
+    Genera un archivo de recursos de versión de Windows (file_version_info.txt)
+    para evitar falsos positivos de antivirus en Windows Defender al incluir
+    metadatos autenticables en la cabecera del ejecutable PE.
+    """
+    partes = str(version_str).strip().split('.')
+    try:
+        major = int(partes[0]) if len(partes) > 0 else 1
+        minor = int(partes[1]) if len(partes) > 1 else 0
+        patch = int(partes[2]) if len(partes) > 2 else 0
+    except ValueError:
+        major, minor, patch = 1, 0, 0
+    
+    version_tuple = (major, minor, patch, 0)
+    version_str_full = f"{major}.{minor}.{patch}.0"
+
+    contenido = f"""# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers={version_tuple},
+    prodvers={version_tuple},
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          '040904B0',
+          [
+            StringStruct('CompanyName', 'Martin Blue Code'),
+            StringStruct('FileDescription', 'Clasificador y Renombrador de Escaneos MB'),
+            StringStruct('FileVersion', '{version_str_full}'),
+            StringStruct('InternalName', 'Renombrar Escaneos MB'),
+            StringStruct('LegalCopyright', 'Copyright (C) 2026 Martin Blue Code. Todos los derechos reservados.'),
+            StringStruct('OriginalFilename', 'Renombrar Escaneos MB.exe'),
+            StringStruct('ProductName', 'Clasificador de Escaneos MB'),
+            StringStruct('ProductVersion', '{version_str_full}')
+          ]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)
+"""
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(contenido)
+
 def compilar():
     config = obtener_configuracion()
     v_actual = config.get("version", "0.3")
@@ -86,13 +140,20 @@ def compilar():
     carpeta_build = os.path.join(RUTA_BASE, "build")
     os.makedirs(carpeta_build, exist_ok=True)
     
+    # Generar archivo de metadatos de version para Windows (Evita falsos positivos de antivirus)
+    ruta_version_file = os.path.join(carpeta_build, "file_version_info.txt")
+    generar_version_file(v_nueva, ruta_version_file)
+    print(f"🛡️  Metadatos de version de Windows creados en: {ruta_version_file}")
+    
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconsole",
         "--onedir",
         # "--onefile",
         "--clean",
+        "--noupx",
         "--name", nombre_ejecutable,
+        "--version-file", ruta_version_file,
         "--specpath", carpeta_build,      # Guarda el .spec dentro de build/
         "--workpath", carpeta_build,      # Guarda temporales dentro de build/
         "--distpath", escritorio,
