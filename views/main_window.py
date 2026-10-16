@@ -6,7 +6,7 @@ import sys
 import fitz  # PyMuPDF
 import datetime
 import calendar
-from config import CLASIFICACIONES
+from config import CLASIFICACIONES, MATERIAS_SIN_OV
 from version import NOMBRE_APP
 from tkinterdnd2 import TkinterDnD, DND_FILES
 
@@ -472,7 +472,7 @@ class ClickMenu:
                 item_kwargs["activebackground"] = vvc_hover_bg
                 item_kwargs["activeforeground"] = "black"
 
-            # Opciones de IO (primeras 2, 3 a 6, 7 en adelante)
+            # Opciones de IO (primeras 2, 3 a 6, 7 en adelante, últimas 2 codigoAvisa)
             elif btn_text == "IO":
                 if idx < 2:
                     io_bg = "#FDE3AF"
@@ -480,6 +480,10 @@ class ClickMenu:
                 elif idx < 6:
                     io_bg = "#EAFAC7"
                     io_hover_bg = "#dbf5ad"
+                elif idx >= len(self.options_dict) - 2:
+                    # Últimas 2 opciones (codigoAvisa)
+                    io_bg = "#FFA8E3"
+                    io_hover_bg = "#ff8fd9"
                 else:
                     io_bg = "#E9BFFD"
                     io_hover_bg = "#dfa6f7"
@@ -548,7 +552,7 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         # 3. Selector de Materia
         self.materia_combo = ctk.CTkOptionMenu(
             self,
-            values=["DU", "MP", "IO", "A", "AFO", "DUYUS", "MOBUR"],
+            values=["DU", "MP", "IO", "IO-CA", "A", "AFO", "DUYUS", "MOBUR"],
             width=88, # Aumentado 15%
             font=("Arial", 14),
             dropdown_font=("Arial", 14),
@@ -601,8 +605,8 @@ class ExpedienteInputFrame(ctk.CTkFrame):
         self.year_combo.set("")  # En blanco por defecto
 
     def _on_materia_changed(self, choice):
-        # Si es IO, bloquear prefijo a INVEACDMX
-        if choice == "IO":
+        # Si es IO o IO-CA, bloquear prefijo a INVEACDMX
+        if choice in MATERIAS_SIN_OV:
             self.pref_combo.set("INVEACDMX")
             self.pref_combo.configure(state="disabled")
         else:
@@ -631,9 +635,9 @@ class ExpedienteInputFrame(ctk.CTkFrame):
             
         year = self.year_combo.get()
         
-        # Para IO no lleva OV, para las demás materias incluye OV
-        if materia == "IO":
-            return f"{prefix}/IO/{number}/{year}"
+        # Para IO e IO-CA no lleva OV, para las demás materias incluye OV
+        if materia in MATERIAS_SIN_OV:
+            return f"{prefix}/{materia}/{number}/{year}"
         else:
             return f"{prefix}/OV/{materia}/{number}/{year}"
 

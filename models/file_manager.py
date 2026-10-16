@@ -1,7 +1,7 @@
 import os
 import shutil
 from typing import List, Tuple
-from config import RUTA_BASE
+from config import RUTA_BASE, MATERIAS_SIN_OV
 
 class FileManager:
     def __init__(self):
@@ -29,6 +29,8 @@ class FileManager:
 
         if prefix not in ["INVEACDMX", "INVEADF"]:
             return False, "Falta seleccionar un prefijo válido para el expediente (INVEACDMX / INVEADF)."
+        if materia in MATERIAS_SIN_OV and prefix != "INVEACDMX":
+            return False, f"La materia {materia} solo puede usar el prefijo INVEACDMX."
         if len(partes) == 5 and ov != "OV":
             return False, "El formato del expediente debe incluir /OV/."
         if not number.isdigit():
@@ -52,17 +54,14 @@ class FileManager:
             prefijo, materia, numero, anio = partes
             ov = ""
             num_pad = numero.zfill(4)
-            if materia == "IO":
-                nombre_carpeta = f"{prefijo}-IO-{num_pad}-{anio}"
-            else:
-                nombre_carpeta = f"{prefijo}-{materia}-{num_pad}-{anio}"
+            nombre_carpeta = f"{prefijo}-{materia}-{num_pad}-{anio}"
             return prefijo, ov, materia, numero, anio, nombre_carpeta
         elif len(partes) == 5:
             prefijo, ov, materia, numero, anio = partes
             num_pad = numero.zfill(4)
-            if materia == "IO":
+            if materia in MATERIAS_SIN_OV:
                 ov = ""
-                nombre_carpeta = f"{prefijo}-IO-{num_pad}-{anio}"
+                nombre_carpeta = f"{prefijo}-{materia}-{num_pad}-{anio}"
             else:
                 nombre_carpeta = f"{prefijo}-{ov}-{materia}-{num_pad}-{anio}"
             return prefijo, ov, materia, numero, anio, nombre_carpeta
@@ -100,6 +99,12 @@ class FileManager:
         if materia == "IO":
             carpeta_materia = "INSPECCIONES OCULARES"
             carpeta_rango = f"{prefijo}-IO-{rango_num}"
+        elif materia == "IO-CA":
+            carpeta_materia = "INSPECCIONES CODIGO AVISA"
+            carpeta_rango = f"{prefijo}-IO-CA-{rango_num}"
+        elif materia in MATERIAS_SIN_OV:
+            carpeta_materia = materia
+            carpeta_rango = f"{prefijo}-{materia}-{rango_num}"
         elif materia == "MP":
             carpeta_materia = "MEDIOS PUBLICITARIOS"
             carpeta_rango = f"{prefijo}-{ov}-{materia}-{rango_num}"

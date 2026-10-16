@@ -5,6 +5,9 @@ import colorsys
 RUTA_BASE = r"C:\Expedientes_Prueba"
 RUTA_ORIGEN_DEFECTO = r"C:\Users\LmartinezN\Desktop\DOCUMENTOS SSC"
 
+# Materias cuyo expediente NO lleva /OV/ (ej. INVEACDMX/IO/777/2026)
+MATERIAS_SIN_OV = ("IO", "IO-CA")
+
 # Paleta de 19 colores (Rojo a Gris) basada en tu espectro
 PALETA_COLORES = [
     "#E8413A", "#CF1E64", "#922497", "#5B3191", "#32469A", 
@@ -166,6 +169,8 @@ DICCIONARIO_SUBMENUS_MAESTRO = {
     "Acta Acuerdo/CLA": "RPS-CLA-AD",
     "Acuerdo IMC": "IMC-AD",
     "Acuerdo CLA": "CLA-AD",
+    "Oficio Comision codigoAvisa": "CA-OC",
+    "Acta codigoAvisa": "CA-AC",
 
     # Retiros
     "Acta RTS/IMC": "IMC-AC",
@@ -249,7 +254,9 @@ CONFIGURACION_SUBMENUS = {
         "Oficio Comision RPS/CLA",
         "Acta IO/CLA",        
         "Acta RPS/CLA",
-        "Acuerdo CLA" 
+        "Acuerdo CLA",
+        "Oficio Comision codigoAvisa",
+        "Acta codigoAvisa",
     ],
     "RTS": [        
         "Oficio Comision RTS/IMC",
